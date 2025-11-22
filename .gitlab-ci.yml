@@ -1,23 +1,51 @@
 stages:
   - deploy
 
-deploy_test:
+variables:
+  GIT_STRATEGY: none
+
+deploy_production:
   stage: deploy
   before_script:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/test_key
-    - chmod 600 ~/.ssh/test_key
-    - echo "Ключ создан, проверяем формат:"
-    - head -n 1 ~/.ssh/test_key
+    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
     
-    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/test_key" > ~/.ssh/config
+    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
     - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts
     
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "echo 'Успешное подключение к серверу!'"
+    - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
+    
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        mkdir -p ~/.ssh;
+        chmod 700 ~/.ssh;
+        echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config;
+        ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null;
+        chmod 600 ~/.ssh/known_hosts;
+        echo 'SSH настройки завершены'
+      "
 
   script:
-    - echo "Тест завершен"
+    - echo "Автодеплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        cd /var/www/html &&
+        git config --global --add safe.directory /var/www/html &&
+        git fetch --all &&
+        git reset --hard origin/main &&
+        git clean -fd &&
+        sudo chown -R www-data:www-data . &&
+        echo 'Автодеплой завершён успешно!'
+      "
+      
+  environment:
+    name: production
+    url: https://bystroi.ru
+  
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: manual
+      allow_failure: true
