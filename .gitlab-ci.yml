@@ -1,0 +1,38 @@
+stages:
+    - deploy
+
+variables:
+    GIT_STRATEGY: none
+
+deploy_production:
+    stage: deploy
+    image: alpine:latest
+    before_script:
+        - apk add --no-cache openssh-client git
+        - mkdir -p ~/.ssh
+        - echo "$DEPLOY_PRIVATE_KEY" > ~/.ssh/id_rsa
+        - chmod 600 ~/.ssh/id_rsa
+        - echo "Host $DEPLOY_HOST" >> ~/.ssh/config
+        - echo "    StrictHostKeyChecking no" >> ~/.ssh/config
+        - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
+    script:
+        - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
+        - ssh $DEPLOY_USER@$DEPLOY_HOST "
+            cd /var/www/html &&
+            git fetch --all &&
+            git reset --hard origin/main &&
+            git clean -fd &&
+            chown -R www-data:www-data . &&
+            echo 'Деплой завершён'
+            "
+    environment:
+        name: production
+        url: https://bystroi.ru
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == "main"'
+    when: always
+    schedule:
+        cron: "0 3 * * 0"
+        timezone: Etc/UTC
+        ref: main
+        active: true
