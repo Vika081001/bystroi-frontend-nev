@@ -35,17 +35,15 @@ deploy_production:
   script:
   - echo "Автодеплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
   - ssh $DEPLOY_USER@$DEPLOY_HOST "
-      sudo mkdir -p /var/www/.ssh &&
-      sudo cp ~/.ssh/gitlab_key /var/www/.ssh/ &&
-      sudo chown -R www-data:www-data /var/www/.ssh &&
-      sudo chmod 600 /var/www/.ssh/gitlab_key &&
+      sudo -u www-data git config --global --add safe.directory /var/www/html &&
       
       cd /var/www/html &&
-      git config --global --add safe.directory /var/www/html &&
       
-      sudo -u www-data git fetch --all &&
-      sudo -u www-data git reset --hard origin/main &&
-      sudo -u www-data git clean -fd &&
+      git fetch --all &&
+      git reset --hard origin/main &&
+      git clean -fd &&
+      
+      sudo chown -R www-data:www-data . &&
       echo 'Автодеплой завершён успешно!'
     "
       
