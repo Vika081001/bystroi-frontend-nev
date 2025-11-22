@@ -8,7 +8,8 @@ deploy_production:
   stage: deploy
   # image: alpine:latest
   before_script:
-    - apt-get update -qq && apt-get install -y openssh-client git
+    - which ssh || (echo "ssh not found"; exit 1)
+    - which git || (echo "git not found"; exit 1)
     - mkdir -p ~/.ssh
     - echo "$DEPLOY_PRIVATE_KEY" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
