@@ -37,8 +37,9 @@ deploy_production:
   - ssh $DEPLOY_USER@$DEPLOY_HOST "
       cd /var/www/html &&
       git config --global --add safe.directory /var/www/html &&
-      git fetch --all &&
-      git reset --hard origin/main &&
+      
+      GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git fetch --all &&
+      GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git reset --hard origin/main &&
       git clean -fd &&
       echo 'Деплой завершён успешно!'
     "
