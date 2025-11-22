@@ -13,7 +13,6 @@ deploy_production:
     - mkdir -p ~/.ssh
     - echo "$DEPLOY_PRIVATE_KEY" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
-    # Правильно формируем ~/.ssh/config одной командой
     - 'echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/id_rsa" > ~/.ssh/config'
     - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
   script:
