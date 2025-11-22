@@ -16,15 +16,16 @@ deploy_production:
     - 'echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/id_rsa" > ~/.ssh/config'
     - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
   script:
-    - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+  - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
+  - ssh $DEPLOY_USER@$DEPLOY_HOST "
+      git config --global --add safe.directory /var/www/html &&
       cd /var/www/html &&
       git fetch --all &&
       git reset --hard origin/main &&
       git clean -fd &&
       chown -R www-data:www-data . &&
       echo 'Деплой завершён успешно!'
-      "
+    "
   environment:
     name: production
     url: https://bystroi.ru
