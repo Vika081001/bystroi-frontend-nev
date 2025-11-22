@@ -32,4 +32,3 @@ deploy_production:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: always
-      
