@@ -1,47 +1,23 @@
 stages:
   - deploy
 
-variables:
-  GIT_STRATEGY: none
-
-deploy_production:
+deploy_test:
   stage: deploy
   before_script:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
-    - chmod 600 ~/.ssh/deploy_key
+    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/test_key
+    - chmod 600 ~/.ssh/test_key
+    - echo "Ключ создан, проверяем формат:"
+    - head -n 1 ~/.ssh/test_key
     
-    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
+    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/test_key" > ~/.ssh/config
     - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts
     
-    - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
-    
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        mkdir -p ~/.ssh;
-        chmod 700 ~/.ssh;
-        echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config;
-        ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null;
-        chmod 600 ~/.ssh/known_hosts;
-        echo 'SSH настройки завершены'
-      "
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "echo 'Успешное подключение к серверу!'"
 
   script:
-    - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        cd /var/www/html &&
-        git config --global --add safe.directory /var/www/html &&
-        git fetch --all &&
-        git reset --hard origin/main &&
-        git clean -fd &&
-        sudo chown -R www-data:www-data . &&
-        echo 'Деплой завершён успешно!'
-      "
-      
-  environment:
-    name: production
-    url: https://bystroi.ru
+    - echo "Тест завершен"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: always
