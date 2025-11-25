@@ -2,32 +2,58 @@ stages:
   - deploy
 
 variables:
-  GIT_STRATEGY: none
+  GIT_STRATEGY: clone
 
 deploy_production:
   stage: deploy
-  image: alpine:latest
   before_script:
-    - apk add --no-cache openssh-client git
     - mkdir -p ~/.ssh
-    - echo "$DEPLOY_PRIVATE_KEY" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo "Host $DEPLOY_HOST" >> ~/.ssh/config
-    - echo "    StrictHostKeyChecking no" >> ~/.ssh/config
-    - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
+    - chmod 700 ~/.ssh
+    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
+    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
+
   script:
     - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        cd /var/www/html &&
-        git fetch --all &&
-        git reset --hard origin/main &&
-        git clean -fd &&
-        chown -R www-data:www-data . &&
-        echo 'Деплой завершён успешно!'
+    - |
+      ssh $DEPLOY_USER@$DEPLOY_HOST "
+        set -e
+        
+        PROJECT_DIR=/var/www/bystroi.ru/shopchik-master
+        PUBLIC_DIR=/var/www/html
+        
+        echo '=== Клонируем/обновляем репозиторий ==='
+        mkdir -p \$PROJECT_DIR
+        cd \$PROJECT_DIR
+        
+        if [ ! -d .git ]; then
+          git clone https://git.tablecrm.com/tablecrm/bystroi.ru.git .
+        else
+          git fetch origin
+          git reset --hard origin/main
+          git clean -fd
+        fi
+        
+        echo '=== Устанавливаем зависимости ==='
+        npm install -g pnpm
+        pnpm install --frozen-lockfile
+        
+        echo '=== Собираем проект ==='
+        pnpm build
+        
+        echo '=== Деплоим в публичную директорию ==='
+        sudo rm -rf \$PUBLIC_DIR/*
+        sudo cp -r out/* \$PUBLIC_DIR/
+        sudo chown -R www-data:www-data \$PUBLIC_DIR
+        sudo chmod -R 755 \$PUBLIC_DIR
+        
+        echo '✅ Деплой завершён успешно! Сайт обновлён.'
       "
+
   environment:
     name: production
     url: https://bystroi.ru
+
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: always
+      when: manual

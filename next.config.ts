@@ -1,11 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  experimental: {
-    ppr: true,
-    dynamicIO: true,
-    serverSourceMaps: true,
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
   },
+  experimental: {
+    useCache: true  // Добавляем эту опцию
+  }
   images: {
     remotePatterns: [
       {
