@@ -5,32 +5,44 @@ deploy_production:
   stage: deploy
   script:
     - mkdir -p ~/.ssh
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
-    - ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $DEPLOY_USER@$DEPLOY_HOST bash -s <<'EOSSH'
+    - |
+      ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $DEPLOY_USER@$DEPLOY_HOST /bin/bash << 'EOSSH'
       set -e
       PROJECT_DIR=/var/www/bystroi.ru/shopchik-master
       PUBLIC_DIR=/var/www/html
+      
       mkdir -p ~/.ssh
-      echo "$GITLAB_DEPLOY_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/gitlab_key
+      cat > ~/.ssh/gitlab_key << 'EOF'
+      $GITLAB_DEPLOY_PRIVATE_KEY
+      EOF
       chmod 600 ~/.ssh/gitlab_key
+      
       echo -e "Host git.tablecrm.com\n  HostName git.tablecrm.com\n  User git\n  IdentityFile ~/.ssh/gitlab_key\n  StrictHostKeyChecking no" > ~/.ssh/config
-      mkdir -p $PROJECT_DIR && cd $PROJECT_DIR
+      
+      mkdir -p $PROJECT_DIR
+      cd $PROJECT_DIR
+      
       git init || true
       git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
+      
       GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git fetch --all
       GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git reset --hard origin/main
       GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git clean -fd
+      
       npm install -g pnpm --unsafe-perm=true
       pnpm install --frozen-lockfile || pnpm install
       rm -rf .next out
       pnpm build
       node ./node_modules/next/dist/bin/next export --outdir out --no-lint
+      
       sudo rm -rf $PUBLIC_DIR/*
       sudo rsync -av out/ $PUBLIC_DIR/
       sudo chown -R www-data:www-data $PUBLIC_DIR
       sudo chmod -R 755 $PUBLIC_DIR
-      echo "ПОБЕДА! Сайт залит → https://bystroi.ru $(date +'%d.%m.%Y %H:%M')"
+      
+      echo "Сайт залит → https://bystroi.ru $(date +'%d.%m.%Y %H:%M')"
       EOSSH
 
   environment:
