@@ -62,14 +62,15 @@ deploy_production:
         rm -rf .next out
 
         pnpm build
-        npx next export --outdir out
+
+        node ./node_modules/next/dist/bin/next export --outdir out
 
         sudo rm -rf $PUBLIC_DIR/*
         sudo cp -r out/* $PUBLIC_DIR/
         sudo chown -R www-data:www-data $PUBLIC_DIR
         sudo chmod -R 755 $PUBLIC_DIR
 
-        echo "ГОТОВО! Полная чистая статика залита из папки out → https://bystroi.ru"
+        echo "ГОТОВО! Полная статика из папки out залита. Сайт жив → https://bystroi.ru"
       EOF
 
   environment:
