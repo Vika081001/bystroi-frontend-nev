@@ -1,6 +1,5 @@
 import { Warehouse } from "./warehouse";
 
-
 export type Product = {
     id: number;
     name: string;
@@ -33,4 +32,25 @@ export type Product = {
     rating?: number;
     reviews_count?: number;
     available_warehouses?: Warehouse[] 
+}
+
+// TODO: move to another file @/shared/types/X.ts
+export type SortBy = "distance" | "price" | "name" | "rating" | "total_sold" | "created_at" | "updated_at";
+export type SortOrder = "asc" | "desc";
+
+export interface ProductsParams {
+    phone?: string;
+    lat?: number;
+    lon?: number;
+    page?: number;
+    size?: number;
+    sort_by?: SortBy;
+    sort_order?: SortOrder;
+    category?: string;
+    manufacturer?: string;
+    min_price?: string;
+    max_price?: string;
+    in_stock?: boolean;
+    rating_from?: number;
+    rating_to?: number;
 }
