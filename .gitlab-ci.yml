@@ -3,6 +3,8 @@ stages:
 
 variables:
   GIT_STRATEGY: none
+  PROJECT_DIR: /var/www/bystroi.ru/shopchik-master   # сюда пуллим исходники
+  PUBLIC_DIR: /var/www/html                          # сюда только готовая статика
 
 deploy_production:
   stage: deploy
@@ -16,7 +18,7 @@ deploy_production:
     - chmod 600 ~/.ssh/deploy_key
     
     - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
-    - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts
+    - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
     
     - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
     
@@ -25,10 +27,10 @@ deploy_production:
         chmod 700 ~/.ssh;
         echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config;
         ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null;
-        chmod 600 ~/.ssh/known_hosts;
+        chmod 600 ~/.ssh/known_hosts 2>/dev/null || true;
         
         echo '=== ДЕБАГ ИНФО ===';
-        ls -la ~/.ssh/gitlab_key;
+        ls -la ~/.ssh/gitlab_key 2>/dev/null || echo 'ключ не найден';
         echo '--- Проверка доступа к GitLab ---';
         ssh -T git@git.tablecrm.com -v || echo 'Проверка завершена';
         echo '=== КОНЕЦ ДЕБАГ ===';
@@ -38,34 +40,37 @@ deploy_production:
     - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
 
     - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        cd /var/www/html &&
-        git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git &&
-        git config --global --add safe.directory /var/www/html &&
-        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git fetch --all &&
-        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git reset --hard origin/main &&
-        git clean -fd &&
-        echo 'Исходники обновлены в /var/www/html'
+        set -e
+        mkdir -p $PROJECT_DIR
+        cd $PROJECT_DIR
+        if [ ! -d .git ]; then git init; fi
+        git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
+        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git fetch --all
+        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git reset --hard origin/main
+        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git clean -fd
+        echo 'Код обновлён в $PROJECT_DIR'
       "
 
     - ssh $DEPLOY_USER@$DEPLOY_HOST "
         set -e
-        cd /var/www/html
-
-        npm install -g pnpm --unsafe-perm=true || true
+        cd $PROJECT_DIR
+        npm install -g pnpm --unsafe-perm=true
         pnpm install --frozen-lockfile || pnpm install
-
         pnpm build
+        echo 'Сборка завершена'
+      "
 
-        sudo rm -rf /var/www/html/*
-        sudo mkdir -p /var/www/html/_next/static
-        sudo cp -r .next/static/* /var/www/html/_next/static/ 2>/dev/null || true
-        sudo find .next -maxdepth 1 -name \"*.html\" -exec cp {} /var/www/html/ \; 2>/dev/null || true
-        [ -d public ] && sudo cp -r public/* /var/www/html/ 2>/dev/null || true
-
-        sudo chown -R www-data:www-data /var/www/html
-        sudo chmod -R 755 /var/www/html
-
-        echo 'Сайт собран и залит как статика — готово!'
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        set -e
+        cd $PROJECT_DIR
+        sudo rm -rf $PUBLIC_DIR/*
+        sudo mkdir -p $PUBLIC_DIR/_next/static
+        sudo cp -r .next/static/* $PUBLIC_DIR/_next/static/ 2>/dev/null || true
+        sudo find .next -maxdepth 1 -name '*.html' -exec cp {} $PUBLIC_DIR/ \; 2>/dev/null || true
+        [ -d public ] && sudo cp -r public/* $PUBLIC_DIR/ 2>/dev/null || true
+        sudo chown -R www-data:www-data $PUBLIC_DIR
+        sudo chmod -R 755 $PUBLIC_DIR
+        echo 'ГОТОВО! Сайт залит как чистая статика в $PUBLIC_DIR'
       "
 
   environment:
@@ -77,4 +82,4 @@ deploy_production:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
       when: manual
-      allow_failure: false        
+      allow_failure: false
