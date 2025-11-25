@@ -17,60 +17,45 @@ deploy_production:
     - chmod 600 ~/.ssh/deploy_key
     - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
     - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
-
     - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
-        mkdir -p ~/.ssh;
-        chmod 700 ~/.ssh;
-        echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config;
-        ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null;
-        echo '=== ДЕБАГ ИНФО ===';
-        ls -la ~/.ssh/gitlab_key;
-        echo '--- Проверка доступа к GitLab ---';
-        ssh -T git@git.tablecrm.com || true;
-        echo '=== КОНЕЦ ДЕБАГ ===';
-      "
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh; chmod 700 ~/.ssh; echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config; ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null"
 
   script:
     - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
 
     - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
-        set -e
-        mkdir -p $PROJECT_DIR
-        cd $PROJECT_DIR
-        [ -d .git ] || git init
-        git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
-        GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git fetch --all
-        GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git reset --hard origin/main
-        GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git clean -fd
-        echo "Код обновлён в $PROJECT_DIR"
+      set -e
+      mkdir -p $PROJECT_DIR
+      cd $PROJECT_DIR
+      [ -d .git ] || git init
+      git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
+      GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git fetch --all
+      GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git reset --hard origin/main
+      GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git clean -fd
+      echo "Код обновлён"
       EOF
 
     - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
-        set -e
-        cd $PROJECT_DIR
-        npm install -g pnpm --unsafe-perm=true
-        pnpm install --frozen-lockfile || pnpm install
-        pnpm build
-        echo "Сборка завершена"
+      set -e
+      cd $PROJECT_DIR
+      npm install -g pnpm --unsafe-perm=true
+      pnpm install --frozen-lockfile || pnpm install
+      pnpm build
+      echo "Сборка завершена"
       EOF
 
     - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
-        set -e
-        cd $PROJECT_DIR
-
-        rm -rf .next out
-
-        pnpm build
-
-        node ./node_modules/next/dist/bin/next export --outdir out
-
-        sudo rm -rf $PUBLIC_DIR/*
-        sudo cp -r out/* $PUBLIC_DIR/
-        sudo chown -R www-data:www-data $PUBLIC_DIR
-        sudo chmod -R 755 $PUBLIC_DIR
-
-        echo "ГОТОВО! Полная статика из папки out залита. Сайт жив → https://bystroi.ru"
+      set -e
+      cd $PROJECT_DIR
+      rm -rf out .next
+      pnpm build
+      node ./node_modules/next/dist/bin/next export --outdir out --no-lint
+      echo "Экспорт завершён — $(ls -1 out | wc -l) файлов"
+      sudo rm -rf $PUBLIC_DIR/*
+      sudo rsync -av out/ $PUBLIC_DIR/
+      sudo chown -R www-data:www-data $PUBLIC_DIR
+      sudo chmod -R 755 $PUBLIC_DIR
+      echo "ГОТОВО! Сайт залит как чистая статика → https://bystroi.ru"
       EOF
 
   environment:
@@ -83,4 +68,3 @@ deploy_production:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
       when: manual
       allow_failure: false
-      
