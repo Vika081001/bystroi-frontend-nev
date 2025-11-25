@@ -3,20 +3,44 @@ stages:
 
 deploy_production:
   stage: deploy
-  image: node:20-alpine
   script:
-    - apk add --no-cache openssh-client rsync sudo
+    - which ssh || (apt-get update && apt-get install -y openssh-client)
+    - which rsync || (apt-get update && apt-get install -y rsync)
+
     - mkdir -p ~/.ssh
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/id_rsa
+    - echo "$DEPLOY_SERVER_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
-    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && echo '$GITLAB_DEPLOY_PRIVATE_KEY' > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
-    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "echo 'Host git.tablecrm.com\n  HostName git.tablecrm.com\n  User git\n  IdentityFile ~/.ssh/gitlab_key\n  StrictHostKeyChecking no' > ~/.ssh/config"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p /var/www/bystroi.ru/shopchik-master && cd /var/www/bystroi.ru/shopchik-master && git init || true && git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git && GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git fetch --all && GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git reset --hard origin/main && git clean -fd"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "cd /var/www/bystroi.ru/shopchik-master && npm install -g pnpm && pnpm install --frozen-lockfile || pnpm install && rm -rf .next out && pnpm build && node ./node_modules/next/dist/bin/next export --outdir out"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "sudo rm -rf /var/www/html/* && sudo rsync -av /var/www/bystroi.ru/shopchik-master/out/ /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo chmod -R 755 /var/www/html && echo 'ГОТОВО! Сайт обновлён — https://bystroi.ru'"
+    - ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh"
+    - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | tr -d '\r' | ssh -i ~/.ssh/id_rsa $DEPLOY_USER@$DEPLOY_HOST "cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
+    - ssh -i ~/.ssh/id_rsa $DEPLOY_USER@$DEPLOY_HOST "echo -e 'Host git.tablecrm.com\n  HostName git.tablecrm.com\n  User git\n  IdentityFile ~/.ssh/gitlab_key\n  StrictHostKeyChecking no' > ~/.ssh/config"
+
+    - ssh -i ~/.ssh/id_rsa $DEPLOY_USER@$DEPLOY_HOST bash -c "'
+        set -e
+        cd /var/www/bystroi.ru/shopchik-master || mkdir -p /var/www/bystroi.ru/shopchik-master && cd /var/www/bystroi.ru/shopchik-master
+        git init || true
+        git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
+        GIT_SSH_COMMAND=\"ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no\" git fetch --all
+        GIT_SSH_COMMAND=\"ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no\" git reset --hard origin/main
+        GIT_SSH_COMMAND=\"ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no\" git clean -fd
+
+        npm install -g pnpm --unsafe-perm || true
+        pnpm install --frozen-lockfile || pnpm install
+        rm -rf .next out
+        pnpm build
+        node ./node_modules/next/dist/bin/next export --outdir out
+
+        sudo rm -rf /var/www/html/*
+        sudo rsync -av out/ /var/www/html/
+        sudo chown -R www-data:www-data /var/www/html
+        sudo chmod -R 755 /var/www/html
+
+        echo \"ГОТОВО! Сайт обновлён — https://bystroi.ru $(date)\"
+      '"
+
   environment:
     name: production
     url: https://bystroi.ru
+
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
