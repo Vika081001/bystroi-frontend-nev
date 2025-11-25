@@ -1,70 +1,22 @@
 stages:
   - deploy
 
-variables:
-  GIT_STRATEGY: none
-  PROJECT_DIR: /var/www/bystroi.ru/shopchik-master
-  PUBLIC_DIR: /var/www/html
-
 deploy_production:
   stage: deploy
   image: node:20-alpine
-
-  before_script:
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
-    - chmod 600 ~/.ssh/deploy_key
-    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
-    - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
-    - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh; chmod 700 ~/.ssh; echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config; ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null"
-
   script:
-    - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
-
-    - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
-      set -e
-      mkdir -p $PROJECT_DIR
-      cd $PROJECT_DIR
-      [ -d .git ] || git init
-      git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
-      GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git fetch --all
-      GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git reset --hard origin/main
-      GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git clean -fd
-      echo "Код обновлён"
-      EOF
-
-    - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
-      set -e
-      cd $PROJECT_DIR
-      npm install -g pnpm --unsafe-perm=true
-      pnpm install --frozen-lockfile || pnpm install
-      pnpm build
-      echo "Сборка завершена"
-      EOF
-
-    - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
-      set -e
-      cd $PROJECT_DIR
-      rm -rf out .next
-      pnpm build
-      node ./node_modules/next/dist/bin/next export --outdir out --no-lint
-      echo "Экспорт завершён — $(ls -1 out | wc -l) файлов"
-      sudo rm -rf $PUBLIC_DIR/*
-      sudo rsync -av out/ $PUBLIC_DIR/
-      sudo chown -R www-data:www-data $PUBLIC_DIR
-      sudo chmod -R 755 $PUBLIC_DIR
-      echo "ГОТОВО! Сайт залит как чистая статика → https://bystroi.ru"
-      EOF
-
+    - apk add --no-cache openssh-client rsync sudo
+    - mkdir -p ~/.ssh
+    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && echo '$GITLAB_DEPLOY_PRIVATE_KEY' > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
+    - ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "echo 'Host git.tablecrm.com\n  HostName git.tablecrm.com\n  User git\n  IdentityFile ~/.ssh/gitlab_key\n  StrictHostKeyChecking no' > ~/.ssh/config"
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p /var/www/bystroi.ru/shopchik-master && cd /var/www/bystroi.ru/shopchik-master && git init || true && git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git && GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git fetch --all && GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git reset --hard origin/main && git clean -fd"
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "cd /var/www/bystroi.ru/shopchik-master && npm install -g pnpm && pnpm install --frozen-lockfile || pnpm install && rm -rf .next out && pnpm build && node ./node_modules/next/dist/bin/next export --outdir out"
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "sudo rm -rf /var/www/html/* && sudo rsync -av /var/www/bystroi.ru/shopchik-master/out/ /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo chmod -R 755 /var/www/html && echo 'ГОТОВО! Сайт обновлён — https://bystroi.ru'"
   environment:
     name: production
     url: https://bystroi.ru
-
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
-      when: always
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-      allow_failure: false
