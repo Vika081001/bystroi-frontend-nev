@@ -3,8 +3,8 @@ stages:
 
 variables:
   GIT_STRATEGY: none
-  PROJECT_DIR: /var/www/bystroi.ru/shopchik-master   # сюда пуллим исходники
-  PUBLIC_DIR: /var/www/html                          # сюда только готовая статика
+  PROJECT_DIR: /var/www/bystroi.ru/shopchik-master
+  PUBLIC_DIR: /var/www/html
 
 deploy_production:
   stage: deploy
@@ -13,54 +13,49 @@ deploy_production:
   before_script:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    
     - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
     - chmod 600 ~/.ssh/deploy_key
-    
     - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
     - ssh-keyscan $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
-    
+
     - echo "$GITLAB_DEPLOY_PRIVATE_KEY" | ssh $DEPLOY_USER@$DEPLOY_HOST "mkdir -p ~/.ssh && cat > ~/.ssh/gitlab_key && chmod 600 ~/.ssh/gitlab_key"
-    
     - ssh $DEPLOY_USER@$DEPLOY_HOST "
         mkdir -p ~/.ssh;
         chmod 700 ~/.ssh;
         echo -e 'Host git.tablecrm.com\n    HostName git.tablecrm.com\n    User git\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/gitlab_key' > ~/.ssh/config;
         ssh-keyscan git.tablecrm.com >> ~/.ssh/known_hosts 2>/dev/null;
-        chmod 600 ~/.ssh/known_hosts 2>/dev/null || true;
-        
         echo '=== ДЕБАГ ИНФО ===';
-        ls -la ~/.ssh/gitlab_key 2>/dev/null || echo 'ключ не найден';
+        ls -la ~/.ssh/gitlab_key;
         echo '--- Проверка доступа к GitLab ---';
-        ssh -T git@git.tablecrm.com -v || echo 'Проверка завершена';
+        ssh -T git@git.tablecrm.com || true;
         echo '=== КОНЕЦ ДЕБАГ ===';
       "
 
   script:
     - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
 
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+    - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
         set -e
         mkdir -p $PROJECT_DIR
         cd $PROJECT_DIR
-        if [ ! -d .git ]; then git init; fi
+        [ -d .git ] || git init
         git remote add origin git@git.tablecrm.com:tablecrm/bystroi.ru.git 2>/dev/null || git remote set-url origin git@git.tablecrm.com:tablecrm/bystroi.ru.git
-        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git fetch --all
-        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git reset --hard origin/main
-        GIT_SSH_COMMAND='ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no' git clean -fd
-        echo 'Код обновлён в $PROJECT_DIR'
-      "
+        GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git fetch --all
+        GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git reset --hard origin/main
+        GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab_key -o StrictHostKeyChecking=no" git clean -fd
+        echo "Код обновлён в $PROJECT_DIR"
+      EOF
 
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+    - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
         set -e
         cd $PROJECT_DIR
         npm install -g pnpm --unsafe-perm=true
         pnpm install --frozen-lockfile || pnpm install
         pnpm build
-        echo 'Сборка завершена'
-      "
+        echo "Сборка завершена"
+      EOF
 
-    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+    - ssh $DEPLOY_USER@$DEPLOY_HOST <<'EOF'
         set -e
         cd $PROJECT_DIR
         sudo rm -rf $PUBLIC_DIR/*
@@ -70,13 +65,13 @@ deploy_production:
         [ -d public ] && sudo cp -r public/* $PUBLIC_DIR/ 2>/dev/null || true
         sudo chown -R www-data:www-data $PUBLIC_DIR
         sudo chmod -R 755 $PUBLIC_DIR
-        echo 'ГОТОВО! Сайт залит как чистая статика в $PUBLIC_DIR'
-      "
+        echo "ГОТОВО! Сайт залит → https://bystroi.ru"
+      EOF
 
   environment:
     name: production
     url: https://bystroi.ru
-  
+
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
       when: always
