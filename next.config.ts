@@ -1,12 +1,22 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
+
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: "export",
   trailingSlash: true,
-  images: {
-    unoptimized: true
-  },
   experimental: {
-    useCache: true
-  }
+    useCache: true, // Добавляем эту опцию
+  },
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "app.tablecrm.com",
+        port: "",
+        pathname: "/photos/**",
+        search: "",
+      },
+    ],
+  },
 };
 export default nextConfig;

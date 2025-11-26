@@ -6,15 +6,16 @@ build_test:
   stage: test
   script:
     - echo "Тестирование"
-    - npm install -g pnpm
+    - export PNPM_HOME="$HOME/.local/bin"
+    - export PATH="$PNPM_HOME:$PATH"
+    - curl -fsSL https://get.pnpm.io/install.sh | sh -
+    - pnpm --version
     - pnpm install --frozen-lockfile || pnpm install
     - pnpm build
     - echo "Сборка успешна"
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'  # В merge requests
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'  # В ветках с открытыми MR
-      when: never
-    - if: '$CI_COMMIT_BRANCH'                             # В любых ветках
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
   artifacts:
     paths:
       - .next/
@@ -27,7 +28,8 @@ deploy_production:
     - chmod 700 ~/.ssh
     - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
     - chmod 600 ~/.ssh/deploy_key
-    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
+    - |
+      echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
   script:
     - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
     - |
@@ -37,32 +39,32 @@ deploy_production:
         PROJECT_DIR=/var/www/bystroi.ru/shopchik-master
         PUBLIC_DIR=/var/www/html
         
-        echo '=== Клонируем/обновляем репозиторий ==='
-        mkdir -p \$PROJECT_DIR
-        cd \$PROJECT_DIR
+        echo '=== Обновляем репозиторий ==='
+        mkdir -p \$PROJECT_DIR && cd \$PROJECT_DIR
         
         if [ ! -d .git ]; then
           git clone https://git.tablecrm.com:tablecrm/bystroi.ru.git .
         else
           git fetch origin
           git reset --hard origin/main
-          git clean -fd
+          git clean -fdx
         fi
         
-        echo '=== Устанавливаем зависимости ==='
-        npm install -g pnpm
+        echo '=== Устанавливаем pnpm и зависимости ==='
+        corepack enable
+        corepack prepare pnpm@latest --activate
         pnpm install --frozen-lockfile || pnpm install
         
         echo '=== Собираем проект ==='
         pnpm build
         
-        echo '=== Деплоим в публичную директорию ==='
+        echo '=== Деплоим ==='
         sudo rm -rf \$PUBLIC_DIR/*
         sudo cp -r out/* \$PUBLIC_DIR/
         sudo chown -R www-data:www-data \$PUBLIC_DIR
         sudo chmod -R 755 \$PUBLIC_DIR
         
-        echo 'Деплой завершён успешно! Сайт обновлён.'
+        echo 'Деплой завершён успешно!'
       "
   environment:
     name: production
@@ -70,5 +72,3 @@ deploy_production:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs: []
-  
