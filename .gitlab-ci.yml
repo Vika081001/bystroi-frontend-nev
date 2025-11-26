@@ -35,35 +35,33 @@ deploy_production:
     - |
       ssh $DEPLOY_USER@$DEPLOY_HOST "
         set -e
-        
+
         PROJECT_DIR=/var/www/bystroi.ru/shopchik-master
         PUBLIC_DIR=/var/www/html
-        
-        echo '=== Обновляем репозиторий ==='
-        mkdir -p \$PROJECT_DIR && cd \$PROJECT_DIR
-        
-        if [ ! -d .git ]; then
-          git clone https://git.tablecrm.com:tablecrm/bystroi.ru.git .
-        else
-          git fetch origin
-          git reset --hard origin/main
-          git clean -fdx
-        fi
-        
-        echo '=== Устанавливаем pnpm и зависимости ==='
-        corepack enable
-        corepack prepare pnpm@latest --activate
+
+        echo 'Обновляем репозиторий'
+        mkdir -p \"\$PROJECT_DIR\" && cd \"\$PROJECT_DIR\"
+        git fetch origin
+        git reset --hard origin/main
+        git clean -fdx
+
+        echo 'Устанавливаем pnpm локально (без corepack)'
+        export PNPM_HOME=\"\$HOME/.local/bin\"
+        export PATH=\"\$PNPM_HOME:\$PATH\"
+        curl -fsSL https://get.pnpm.io/install.sh | sh -
+
+        echo 'Устанавливаем зависимости'
         pnpm install --frozen-lockfile || pnpm install
-        
-        echo '=== Собираем проект ==='
+
+        echo 'Собираем проект'
         pnpm build
-        
-        echo '=== Деплоим ==='
-        sudo rm -rf \$PUBLIC_DIR/*
-        sudo cp -r out/* \$PUBLIC_DIR/
-        sudo chown -R www-data:www-data \$PUBLIC_DIR
-        sudo chmod -R 755 \$PUBLIC_DIR
-        
+
+        echo 'Деплоим в прод'
+        sudo rm -rf \"\$PUBLIC_DIR\"/*
+        sudo cp -r out/* \"\$PUBLIC_DIR\"/
+        sudo chown -R www-data:www-data \"\$PUBLIC_DIR\"
+        sudo chmod -R 755 \"\$PUBLIC_DIR\"
+
         echo 'Деплой завершён успешно!'
       "
   environment:
