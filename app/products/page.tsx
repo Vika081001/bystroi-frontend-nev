@@ -17,11 +17,10 @@ import { SlidersHorizontal } from 'lucide-react'
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { ProductsList } from '@/widgets/product/ProductsList'
 
 const Products = () => {
     return (
@@ -64,12 +63,7 @@ const Products = () => {
                     <div className='hidden md:block'>
                         <Filter />
                     </div>
-                    <div className='flex-1 grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3'>
-                        {Array.from({ length: 25 }, (_, i) => i + 1).map((index) => (
-                            <ProductItem key={index} />
-                        ))}
-
-                    </div>
+                    <ProductsList />
                 </div>
             </div>
         </div>

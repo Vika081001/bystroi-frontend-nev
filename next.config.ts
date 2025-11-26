@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
   experimental: {
     useCache: true  // Добавляем эту опцию
   }
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'app.tablecrm.com',
+        port: '',
+        pathname: '/photos/**',
+        search: '',
+      },],
+  },
 };
 
 export default nextConfig;
