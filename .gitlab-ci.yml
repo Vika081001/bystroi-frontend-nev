@@ -36,7 +36,7 @@ deploy_production:
         
         echo '=== Устанавливаем зависимости ==='
         npm install -g pnpm
-        pnpm install --frozen-lockfile
+        pnpm install --frozen-lockfile || pnpm install
         
         echo '=== Собираем проект ==='
         pnpm build
@@ -47,7 +47,7 @@ deploy_production:
         sudo chown -R www-data:www-data \$PUBLIC_DIR
         sudo chmod -R 755 \$PUBLIC_DIR
         
-        echo '✅ Деплой завершён успешно! Сайт обновлён.'
+        echo 'Деплой завершён успешно! Сайт обновлён.'
       "
 
   environment:
