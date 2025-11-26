@@ -1,8 +1,9 @@
-import Footer from "@/widgets/footer";
-import { Header } from "@/widgets/header";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
+
+import Footer from "@/widgets/footer";
+import { Header } from "@/widgets/header";
 
 import { Providers } from "./providers";
 import "./styles/globals.css";
@@ -22,12 +23,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`bg-white text-gray-800 ${inter.className}`}>
       <body className="h-screen relative z-10">
-        <Header />
-        <main>
-          <Providers>{children}</Providers>
-        </main>
-        <Footer />
-        <Toaster closeButton />
+        <Providers>
+          <Header />
+          <main>{children}</main>
+          <Footer />
+          <Toaster closeButton />
+        </Providers>
       </body>
     </html>
   );
