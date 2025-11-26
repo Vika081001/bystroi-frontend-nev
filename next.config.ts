@@ -1,5 +1,4 @@
 import type { NextConfig } from 'next';
-
 const nextConfig: NextConfig = {
   output: 'export',
   trailingSlash: true,
@@ -7,18 +6,7 @@ const nextConfig: NextConfig = {
     unoptimized: true
   },
   experimental: {
-    useCache: true  // Добавляем эту опцию
+    useCache: true
   }
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'app.tablecrm.com',
-        port: '',
-        pathname: '/photos/**',
-        search: '',
-      },],
-  },
 };
-
 export default nextConfig;
