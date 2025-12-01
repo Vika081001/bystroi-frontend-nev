@@ -13,65 +13,88 @@ build:
   tags:
     - universal
   script:
-    - echo "=== Сборка проекта === $(date)"
-    - export PNPM_HOME="$HOME/.local/share/pnpm"
-    - export PATH="$PNPM_HOME:$PATH"
+    - echo "сборка Next.js"
+    
     - |
       if ! command -v pnpm >/dev/null 2>&1; then
-        echo "Устанавливаем pnpm..."
-        curl -fsSL https://get.pnpm.io/install.sh | bash -
+        curl -fsSL https://get.pnpm.io/install.sh | sh -
+        export PNPM_HOME="$HOME/.local/share/pnpm"
+        export PATH="$PNPM_HOME:$PATH"
       fi
-    - pnpm config set store-dir .pnpm-store
-    - pnpm config set node-linker hoisted
-    - pnpm install --frozen-lockfile || pnpm install
+    
     - |
-      if ! swapon --show | grep -q swapfile; then
-        echo "Создаём swap 3 ГБ"
-        sudo fallocate -l 3G /swapfile
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
+      if pnpm install --frozen-lockfile; then
+        echo "Зависимости установлены"
+      else
+        echo "Lockfile устарел"
+        pnpm install
       fi
+    
     - NODE_OPTIONS="--max-old-space-size=3072" pnpm build
-    - echo "Сборка завершена успешно!"
-  rules:
-    - when: always
+    
+    - |
+      if [ ! -d ".next/standalone" ]; then
+        echo "XXX Ошибка: проверь next.config.ts - нужен output: 'standalone'"
+        exit 1
+      fi
+      
+      echo "Сборка готова"
   artifacts:
     paths:
-      - .next
+      - .next/standalone
+      - .next/static
       - public
-      - next-env.d.ts
-    expire_in: 2 hours
+    expire_in: 3 hours
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 deploy_production:
   stage: deploy
   tags:
     - universal
+  dependencies:
+    - build
   before_script:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
     - chmod 600 ~/.ssh/deploy_key
-    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
+    - echo -e "Host $DEPLOY_HOST\n  HostName $DEPLOY_HOST\n  User $DEPLOY_USER\n  StrictHostKeyChecking no\n  IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
   script:
-    - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
+    - echo "деплой"
     - |
-      ssh $DEPLOY_USER@$DEPLOY_HOST /bin/bash << 'EOF'
-      set -e
-      cd /var/www/bystroi.ru/shopchik-master
-      git fetch origin && git reset --hard origin/main && git clean -fdx
-      pnpm install --frozen-lockfile || pnpm install
-      NODE_OPTIONS="--max-old-space-size=3072" pnpm build
-      
-      echo "Деплой"
-      sudo rm -rf /var/www/html/*
-      sudo cp -r out/* /var/www/html/
-      sudo chown -R www-data:www-data /var/www/html
-      sudo find /var/www/html -type d -exec chmod 755 {} \;
-      sudo find /var/www/html -type f -exec chmod 644 {} \;
-      
-      echo "Деплой завершен: https://bystroi.ru"
-      EOF
+      ssh $DEPLOY_USER@$DEPLOY_HOST "
+        set -e
+        
+        cd /var/www/bystroi.ru/shopchik-master
+        git fetch origin
+        git reset --hard origin/main
+        git clean -fdx
+        
+        if ! command -v pm2 >/dev/null 2>&1; then
+          npm install -g pm2
+        fi
+        
+        pm2 stop bystroi-app 2>/dev/null || true        
+        sleep 2
+        
+        pm2 start .next/standalone/server.js \
+          --name bystroi-app \
+          --time \
+          --cwd /var/www/bystroi.ru/shopchik-master
+        
+        pm2 save 2>/dev/null || true
+        
+        echo 'ожидание'
+        sleep 5
+        
+        if curl -s http://localhost:3000 >/dev/null; then
+          echo 'Сайт запущен: https://bystroi.ru'
+        else
+          echo '!!!  нужно проверить: pm2 logs bystroi-app'
+        fi
+      "
   environment:
     name: production
     url: https://bystroi.ru
