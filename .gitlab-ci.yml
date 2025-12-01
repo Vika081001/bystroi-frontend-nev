@@ -1,73 +1,73 @@
 stages:
-  - test
+  - build
   - deploy
 
-build_test:
-  stage: test
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .pnpm-store
+    - .next/cache
+
+build:
+  stage: build
+  tags:
+    - universal
   script:
-    - echo "Тестирование"
-    - npm install -g pnpm
+    - echo "=== Сборка проекта === $(date)"
+    - export PNPM_HOME="$HOME/.local/share/pnpm"
+    - export PATH="$PNPM_HOME:$PATH"
+    - |
+      if ! command -v pnpm >/dev/null 2>&1; then
+        echo "Устанавливаем pnpm..."
+        curl -fsSL https://get.pnpm.io/install.sh | bash -
+      fi
+    - pnpm config set store-dir .pnpm-store
+    - pnpm config set node-linker hoisted
     - pnpm install --frozen-lockfile || pnpm install
-    - pnpm build
-    - echo "Сборка успешна"
+    - |
+      if ! swapon --show | grep -q swapfile; then
+        echo "Создаём swap 3 ГБ"
+        sudo fallocate -l 3G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+      fi
+    - NODE_OPTIONS="--max-old-space-size=3072" pnpm build
+    - echo "Сборка завершена успешно!"
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"' # В merge requests
-    - if: "$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS" # В ветках с открытыми MR
-      when: never
-    - if: "$CI_COMMIT_BRANCH" # В любых ветках
+    - when: always
   artifacts:
     paths:
-      - .next/
-    expire_in: 1 hour
+      - .next
+      - out
+    expire_in: 2 hours
 
 deploy_production:
   stage: deploy
-  before_script:
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
-    - chmod 600 ~/.ssh/deploy_key
-    - echo -e "Host $DEPLOY_HOST\n    HostName $DEPLOY_HOST\n    User $DEPLOY_USER\n    StrictHostKeyChecking no\n    IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
+  tags:
+    - universal
   script:
     - echo "Деплой bystroi.ru $(date '+%d.%m.%Y %H:%M UTC')"
     - |
-      ssh $DEPLOY_USER@$DEPLOY_HOST "
-        set -e
-        
-        PROJECT_DIR=/var/www/bystroi.ru/shopchik-master
-        PUBLIC_DIR=/var/www/html
-        
-        echo '=== Клонируем/обновляем репозиторий ==='
-        mkdir -p \$PROJECT_DIR
-        cd \$PROJECT_DIR
-        
-        if [ ! -d .git ]; then
-          git clone https://git.tablecrm.com:tablecrm/bystroi.ru.git .
-        else
-          git fetch origin
-          git reset --hard origin/main
-          git clean -fd
-        fi
-        
-        echo '=== Устанавливаем зависимости ==='
-        npm install -g pnpm
-        pnpm install --frozen-lockfile || pnpm install
-        
-        echo '=== Собираем проект ==='
-        pnpm build
-        
-        echo '=== Деплоим в публичную директорию ==='
-        sudo rm -rf \$PUBLIC_DIR/*
-        sudo cp -r out/* \$PUBLIC_DIR/
-        sudo chown -R www-data:www-data \$PUBLIC_DIR
-        sudo chmod -R 755 \$PUBLIC_DIR
-        
-        echo 'Деплой завершён успешно! Сайт обновлён.'
-      "
+      ssh $DEPLOY_USER@$DEPLOY_HOST bash <<'EOF'
+      set -e
+      cd /var/www/bystroi.ru/shopchik-master
+      git fetch origin && git reset --hard origin/main && git clean -fdx
+      export PNPM_HOME="$HOME/.local/share/pnpm"
+      export PATH="$PNPM_HOME:$PATH"
+      if ! command -v pnpm >/dev/null; then
+        curl -fsSL https://get.pnpm.io/install.sh | bash -
+      fi
+      pnpm install --frozen-lockfile || pnpm install
+      NODE_OPTIONS="--max-old-space-size=3072" pnpm build
+      sudo rsync -av --delete out/ /var/www/html/
+      sudo chown -R www-data:www-data /var/www/html
+      sudo chmod -R 755 /var/www/html
+      echo "Деплой завершённых успешно!"
+      EOF
   environment:
     name: production
     url: https://bystroi.ru
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs: []
