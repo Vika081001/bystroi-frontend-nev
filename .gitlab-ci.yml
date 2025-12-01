@@ -78,13 +78,24 @@ deploy_production:
 
       sudo cp -r public/* /var/www/html/ 2>/dev/null || true
 
-      sudo find .next/server/app -name "*.html" -exec cp --parents {} /var/www/html/ \; 2>/dev/null || true
-      sudo cp -r .next/server/app /var/www/html/_next/server/app 2>/dev/null || true
+      sudo tee /var/www/html/index.html > /dev/null <<'INDEX'
+      <!DOCTYPE html>
+      <html lang="ru">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>bystroi.ru</title>
+          <script type="module" src="/_next/static/chunks/main-app.js"></script>
+        </head>
+        <body></body>
+      </html>
+      INDEX
 
       sudo chown -R www-data:www-data /var/www/html
-      sudo chmod -R 755 /var/www/html
+      sudo find /var/www/html -type d -exec chmod 755 {} \;
+      sudo find /var/www/html -type f -exec chmod 644 {} \;
 
-      echo "Деплой завершён успешно!"
+      echo "Деплой завершён успешно! Сайт живой: https://bystroi.ru"
       EOF
   environment:
     name: production
