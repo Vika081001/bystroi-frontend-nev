@@ -21,10 +21,18 @@ export const apiClient = axios.create({
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
+    'Accept': 'application/json',
   },
 });
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (config.url && config.url.startsWith('http://')) {
+    config.url = config.url.replace('http://', 'https://');
+  }
+  
+  if (config.baseURL && config.baseURL.startsWith('http://')) {
+    config.baseURL = config.baseURL.replace('http://', 'https://');
+  }
   const phone = getAuthPhone();
 
   if (!phone) {
@@ -56,6 +64,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error("API Error:", error.response?.data || error.message);
+    if (error.config) {
+      console.error("Request URL:", error.config.url);
+      console.error("Base URL:", error.config.baseURL);
+    }
     return Promise.reject(error);
   },
 );

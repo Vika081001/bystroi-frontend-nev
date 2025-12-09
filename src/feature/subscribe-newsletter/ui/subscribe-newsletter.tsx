@@ -1,70 +1,93 @@
-import { Calendar, Hand } from "lucide-react";
+// components/newsletter/subscribe-newsletter.tsx
+import { Calendar, Hand, Gift, Mail } from "lucide-react";
 import React from "react";
 
 import { Button } from "@/shared/ui/kit/button";
 import { Input } from "@/shared/ui/kit/input";
+import Link from "next/link";
 
 const SubscribeNewsletter = () => {
   return (
     <section className="pt-8">
       <div className="container">
-        <div className="relative isolate overflow-hidden bg-gray-100 rounded-lg py-6 md:py-8">
-          <div className="px-4 md:px-8">
-            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-8 lg:max-w-none lg:grid-cols-2">
+        <div className="relative isolate overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl py-8 md:py-12 shadow-sm">
+          <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+          
+          <div className="relative px-4 md:px-8">
+            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-8 lg:max-w-none lg:grid-cols-2 lg:items-center">
               <div className="max-w-xl lg:max-w-lg">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  Подпишитесь на нашу рассылку
+                <div className="inline-flex items-center gap-2 mb-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                  <Gift className="w-4 h-4" />
+                  Специальные предложения
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+                  Первыми узнавайте о скидках
                 </h2>
-                <p className="pt-1 text-sm text-gray-600">
-                  Nostrud amet eu ullamco nisi aute in ad minim nostrud
-                  adipisicing velit quis. Duis tempor incididunt dolore.
+                <p className="pt-2 text-base text-gray-600">
+                  Подпишитесь на рассылку и получайте эксклюзивные предложения, 
+                  персональные скидки и информацию о новинках первыми. Никакого спама.
                 </p>
-                <div className="pt-4 flex max-w-md gap-x-4">
-                  <label htmlFor="email-address" className="sr-only">
-                    Email address
-                  </label>
-                  <Input
-                    id="email-address"
-                    type="email"
-                    name="email"
-                    required
-                    placeholder="Введите ваш емейл..."
-                    autoComplete="email"
-                    className="bg-gray-200 text-sm"
-                  />
-                  <Button className="bg-blue-600">Подписаться</Button>
+                
+                <div className="pt-6">
+                  <form className="flex max-w-md gap-x-3">
+                    <div className="flex-1">
+                      <label htmlFor="email-address" className="sr-only">
+                        Email address
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Input
+                          id="email-address"
+                          type="email"
+                          name="email"
+                          required
+                          placeholder="Ваш email"
+                          autoComplete="email"
+                          className="pl-10 bg-white border-gray-300 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <Button className="bg-blue-600 hover:bg-blue-700 cursor-pointer">
+                      Подписаться
+                    </Button>
+                  </form>
+                  
+                  <p className="mt-3 text-xs text-gray-500">
+                    Подписываясь, вы соглашаетесь с{' '}
+                    <Link href="/privacy" className="text-blue-600 hover:underline">
+                      политикой конфиденциальности
+                    </Link>
+                  </p>
                 </div>
               </div>
-              <dl className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:pt-2">
-                <div className="flex flex-col items-start">
-                  <Button size="icon" variant="outline">
-                    <Calendar width={20} height={20} />
-                  </Button>
-                  <dt className="pt-4 text-base font-medium">
-                    Еженедельные статьи
-                  </dt>
-                  <dd className="pt-2 text-sm text-gray-500">
-                    Non laboris consequat cupidatat laborum magna. Eiusmod non
-                    irure cupidatat duis commodo amet.
-                  </dd>
+              
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="bg-white/80 backdrop-blur-sm p-5 rounded-lg border border-blue-100">
+                  <div className="inline-flex p-2 bg-blue-100 rounded-lg mb-3">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Еженедельные подборки
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Лучшие товары недели, подборки по категориям и полезные советы по выбору.
+                  </p>
                 </div>
-                <div className="flex flex-col items-start">
-                  <Button size="icon" variant="outline">
-                    <Hand width={20} height={20} />
-                  </Button>
-                  <dt className="pt-4 text-base font-medium">Не спам</dt>
-                  <dd className="pt-2 text-sm text-gray-500">
-                    Non laboris consequat cupidatat laborum magna. Eiusmod non
-                    irure cupidatat duis commodo amet.
-                  </dd>
+                
+                <div className="bg-white/80 backdrop-blur-sm p-5 rounded-lg border border-blue-100">
+                  <div className="inline-flex p-2 bg-green-100 rounded-lg mb-3">
+                    <Hand className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Только полезное
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Никакого спама. Только релевантные предложения и важные обновления.
+                  </p>
                 </div>
-              </dl>
+              </div>
             </div>
           </div>
-          <div
-            aria-hidden="true"
-            className="absolute top-0 left-1/2 -z-10 -translate-x-1/2 blur-3xl xl:-top-6"
-          ></div>
         </div>
       </div>
     </section>

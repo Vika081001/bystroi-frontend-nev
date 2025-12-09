@@ -1,0 +1,37 @@
+import { apiClient } from "./client";
+import { CreateOrderParams, CreateOrderResponse } from "../types/order";
+
+export const createOrder = async (params: CreateOrderParams): Promise<CreateOrderResponse> => {
+  const {
+    entity_type = "docs_sales",
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    utm_content,
+    utm_name,
+    utm_phone,
+    utm_email,
+    utm_leadid,
+    utm_yclientid,
+    utm_gaclientid,
+    ...body
+  } = params;
+
+  const response = await apiClient.post<CreateOrderResponse>("/mp/orders", body, {
+    params: {
+      entity_type,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_name,
+      utm_phone,
+      utm_email,
+      utm_leadid,
+      utm_yclientid,
+      utm_gaclientid,
+    },
+  });
+  
+  return response.data;
+};

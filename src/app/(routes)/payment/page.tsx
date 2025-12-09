@@ -1,28 +1,210 @@
 "use client";
 import { LockIcon } from "lucide-react";
-import { MinusIcon, PlusIcon } from "lucide-react";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
+import { useCart } from "@/entities/cart/model/hooks";
+import { useCartItems } from "@/entities/cart/model/hooks";
+import { useCreateOrder } from "@/shared/hooks/useOrders";
+import { CartItem } from "@/entities/cart/ui/cart-item";
+import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
 import { Button } from "@/shared/ui/kit/button";
-import { ButtonGroup } from "@/shared/ui/kit/button-group";
 import { Checkbox } from "@/shared/ui/kit/checkbox";
 import { Input } from "@/shared/ui/kit/input";
-import { InputGroup, InputGroupInput } from "@/shared/ui/kit/input-group";
 import { Label } from "@/shared/ui/kit/label";
 import { Separator } from "@/shared/ui/kit/separator";
 import { Textarea } from "@/shared/ui/kit/textarea";
+import { Skeleton } from "@/shared/ui/kit/skeleton";
 
-const Payment = () => {
-  const [isChecked, setIsChecked] = React.useState(false);
-  const [count, setCount] = React.useState(1);
+interface UserData {
+  name: string;
+  phone: string;
+  address?: string;
+}
+
+const PaymentPage = () => {
+  const router = useRouter();
+  const contragentPhone = useContragentPhone();
+  const { data: cart, isLoading: isCartLoading, error: cartError } = useCart();
+  const { 
+    items, 
+    isLoading: areItemsLoading, 
+    hasError, 
+    totalPrice 
+  } = useCartItems(cart?.goods || []);
+  const createOrderMutation = useCreateOrder();
+
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    note: "",
+    isAnotherPerson: false,
+    recipientName: "",
+    recipientPhone: "",
+  });
+
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        let userData: UserData | null = null;
+        let source: 'auth' | 'localStorage' | 'contragent' | null = null;
+
+        if (!userData) {
+          const savedData = localStorage.getItem('user_delivery_data');
+          if (savedData) {
+            try {
+              const parsedData = JSON.parse(savedData);
+              userData = {
+                name: parsedData.name || "",
+                phone: parsedData.phone || "",
+                address: parsedData.address || "",
+              };
+              source = 'localStorage';
+            } catch (error) {
+              console.error('Error parsing localStorage data:', error);
+            }
+          }
+        }
+
+        if (!userData && contragentPhone) {
+          userData = {
+            name: "",
+            phone: contragentPhone,
+            address: "",
+          };
+          source = 'contragent';
+
+        }
+
+        if (!userData) {
+          userData = {
+            name: "",
+            phone: "",
+            address: "",
+          };
+
+        }
+        setFormData(prev => ({
+          ...prev,
+          name: userData!.name,
+          phone: userData!.phone,
+          address: userData!.address || "",
+        }));
+
+        
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    if (!isInitialized) {
+      loadUserData();
+    }
+  }, [contragentPhone, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      const isAuthenticated = async () => {
+        try {
+          const response = await fetch('/api/user/profile');
+          return response.ok;
+        } catch {
+          return false;
+        }
+      };
+
+      const saveToLocalStorage = async () => {
+        const authenticated = await isAuthenticated();
+        if (!authenticated && (formData.name || formData.phone || formData.address)) {
+          const userData: UserData = {
+            name: formData.name,
+            phone: formData.phone,
+            address: formData.address,
+          };
+          localStorage.setItem('user_delivery_data', JSON.stringify(userData));
+        }
+      };
+
+      const timeoutId = setTimeout(saveToLocalStorage, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [formData.name, formData.phone, formData.address, isInitialized]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!cart || items.length === 0) {
+      alert("Корзина пуста");
+      return;
+    }
+
+    if (!formData.name || !formData.phone) {
+      alert("Заполните обязательные поля: имя и телефон");
+      return;
+    }
+
+    const orderData = {
+      goods: cart.goods.map(good => ({
+        nomenclature_id: good.nomenclature_id,
+        warehouse_id: good.warehouse_id,
+        quantity: good.quantity || 1,
+        is_from_cart: true,
+      })),
+      delivery: {
+        address: formData.address || "Адрес не указан",
+        delivery_date: Math.floor(Date.now() / 1000) + 86400,
+        delivery_price: 0,
+        recipient: {
+          name: formData.isAnotherPerson ? formData.recipientName : formData.name,
+          surname: "",
+          phone: formData.isAnotherPerson ? formData.recipientPhone : formData.phone,
+        },
+        note: formData.note,
+      }
+    };
+
+    try {
+      await createOrderMutation.mutateAsync(orderData);
+      setOrderPlaced(true);
+      
+      setTimeout(() => {
+        router.push("/order-success");
+      }, 2000);
+    } catch (error) {
+      console.error("Ошибка при оформлении заказа:", error);
+      alert("Произошла ошибка при оформлении заказа. Попробуйте еще раз.");
+    }
+  };
+
+  if (orderPlaced) {
+    return (
+      <div className="container mx-auto py-8 text-center">
+        <h1 className="text-2xl font-bold text-green-600 mb-4">Заказ успешно оформлен!</h1>
+        <p>Спасибо за ваш заказ. Скоро с вами свяжется менеджер.</p>
+      </div>
+    );
+  }
+
+  const isLoading = isCartLoading || areItemsLoading || createOrderMutation.isPending;
 
   return (
-    <div className="py-4 md:py-8">
+    <div className="py-4 md:py-8 min-w-200">
       <div className="container">
         <div className="w-full max-w-5xl mx-auto">
-          <h1 className="text-xl font-medium tracking-tight pb-4">Оплата</h1>
+          <h1 className="text-xl font-medium tracking-tight pb-4">Оформление заказа</h1>
           <div className="flex flex-col-reverse gap-8 lg:grid grid-cols-7">
-            <form action="" className="col-span-3">
+            <form onSubmit={handleSubmit} className="col-span-3">
               <Button className="w-full">
                 <svg
                   viewBox="0 0 50 20"
@@ -39,190 +221,168 @@ const Payment = () => {
               </div>
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="name">Имя</Label>
-                  <Input id="name" type="text" required placeholder="Коля" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="number">Номер телефона</Label>
+                  <Label htmlFor="name">Имя *</Label>
                   <Input
-                    id="number"
-                    type="number"
-                    required
-                    placeholder="+32 000 000 000"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="delivery">Адрес доставки</Label>
-                  <Input
-                    id="delivery"
+                    id="name"
                     type="text"
                     required
-                    placeholder="улица пушкина дом калатушкина"
+                    placeholder="Иван"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="delivery">Примечание</Label>
-                  <Textarea
-                    id="delivery"
+                  <Label htmlFor="phone">Номер телефона *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
                     required
-                    rows={10}
-                    placeholder="всякие нюансы"
+                    placeholder="+7 999 123 45 67"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="address">Адрес доставки</Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    placeholder="ул. Пушкина, д. Колотушкина (не обязательно)"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="note">Примечание к заказу</Label>
+                  <Textarea
+                    id="note"
+                    rows={4}
+                    placeholder="Дополнительные пожелания"
+                    value={formData.note}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    id="terms"
-                    checked={isChecked}
+                    id="isAnotherPerson"
+                    checked={formData.isAnotherPerson}
                     onCheckedChange={(checked) => {
-                      setIsChecked(!!checked);
+                      setFormData(prev => ({ ...prev, isAnotherPerson: !!checked }));
                     }}
+                    disabled={isLoading}
                   />
-                  <Label htmlFor="terms">
+                  <Label htmlFor="isAnotherPerson">
                     Заказ оформляется для другого человека
                   </Label>
                 </div>
-                {isChecked && (
-                  <React.Fragment>
+                {formData.isAnotherPerson && (
+                  <>
                     <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="name">Имя получателя</Label>
+                      <Label htmlFor="recipientName">Имя получателя *</Label>
                       <Input
-                        id="name"
+                        id="recipientName"
                         type="text"
                         required
-                        placeholder="Коля"
+                        placeholder="Петр"
+                        value={formData.recipientName}
+                        onChange={handleInputChange}
+                        disabled={isLoading}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="number">Номер телефона получателя</Label>
+                      <Label htmlFor="recipientPhone">Номер телефона получателя *</Label>
                       <Input
-                        id="number"
-                        type="number"
+                        id="recipientPhone"
+                        type="tel"
                         required
-                        placeholder="+32 000 000 000"
+                        placeholder="+7 999 765 43 21"
+                        value={formData.recipientPhone}
+                        onChange={handleInputChange}
+                        disabled={isLoading}
                       />
                     </div>
-                  </React.Fragment>
+                  </>
                 )}
-                <Button className="bg-blue-600">Оплатить 3000$</Button>
+                <Button 
+                  type="submit" 
+                  className="bg-blue-600 hover:bg-blue-700" 
+                  disabled={isLoading || items.length === 0}
+                >
+                  {createOrderMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Оформление заказа...
+                    </>
+                  ) : (
+                    `Оформить заказ за ${totalPrice.toLocaleString("ru-RU")}₽`
+                  )}
+                </Button>
                 <div className="flex justify-center items-center text-gray-500 gap-1">
                   <LockIcon width={16} height={16} />
-
                   <span className="text-sm text-center">
-                    Платежные данные хранятся в виде обычного текста
+                    Ваши данные защищены
                   </span>
                 </div>
               </div>
             </form>
-            <div className="flex flex-col gap-2 col-span-4">
-              <div className="flex gap-2">
-                <div className="rounded-md border border-gray-100 w-24 h-24 p-2">
-                  <img className="w-full h-full" src="/airpods.png" />
-                </div>
-                <div className="py-1 flex-1">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm tracking-tight font-medium">
-                      AirPods Pro Max
-                    </p>
-                    <span className="font-medium">100$</span>
+            <div className="col-span-4">
+              <div className="flex flex-col gap-2">
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="flex gap-2">
+                        <div className="rounded-md border border-gray-100 w-24 h-24 p-2">
+                          <Skeleton className="w-full h-full" />
+                        </div>
+                        <div className="py-1 flex-1">
+                          <div className="flex justify-between items-center">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-4 w-16" />
+                          </div>
+                          <Skeleton className="h-3 w-24 mt-1" />
+                          <div className="flex justify-between items-center gap-2 pt-2">
+                            <Skeleton className="h-8 w-32" />
+                            <Skeleton className="h-8 w-16" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-sm text-gray-600">Apple</span>
-                  <div className="flex justify-between items-center gap-2 pt-2">
-                    <ButtonGroup aria-label="count" className="h-fit">
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        disabled={count < 2}
-                        onClick={() => setCount((prev) => prev - 1)}
-                      >
-                        <MinusIcon />
-                      </Button>
-                      <InputGroup className="w-10 h-8">
-                        <InputGroupInput
-                          type="number"
-                          value={count}
-                          onChange={(e) =>
-                            setCount(Number(e.target.value) || 1)
-                          }
-                          className="px-1 text-center"
-                        />
-                      </InputGroup>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={() => setCount((prev) => prev + 1)}
-                      >
-                        <PlusIcon />
-                      </Button>
-                    </ButtonGroup>
-                    <div className="flex justify-end">
-                      <Button variant="link" className="text-blue-600 px-0">
-                        Удалить
-                      </Button>
+                ) : cartError ? (
+                  <div className="text-center py-4 text-red-500">
+                    Ошибка загрузки корзины
+                  </div>
+                ) : items.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    Корзина пуста
+                  </div>
+                ) : (
+                  <>
+                    {items.map((item, index) => (
+                      <React.Fragment key={`${item.nomenclature_id}-${item.warehouse_id || 'no-warehouse'}`}>
+                        <CartItem item={item} />
+                        {index < items.length - 1 && <Separator className="my-4" />}
+                      </React.Fragment>
+                    ))}
+                    
+                    <div className="mt-auto md:mt-0 pt-4">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <p className="tracking-tight font-medium">Всего</p>
+                          <span className="tracking-tight font-medium">{totalPrice.toLocaleString("ru-RU")}₽</span>
+                        </div>
+                        <p className="text-sm/tight text-gray-500 tracking-tight pt-2">
+                          Стоимость доставки и налоги рассчитываются <br />
+                          при оформлении заказа.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-              <Separator className="my-4" />
-              <div className="flex gap-2">
-                <div className="rounded-md border border-gray-100 w-24 h-24 p-2">
-                  <img className="w-full h-full" src="/airpods.png" />
-                </div>
-                <div className="py-1 flex-1">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm tracking-tight font-medium">
-                      AirPods Pro Max
-                    </p>
-                    <span className="font-medium">100$</span>
-                  </div>
-                  <span className="text-sm text-gray-600">Apple</span>
-                  <div className="flex justify-between items-center gap-2 pt-2">
-                    <ButtonGroup aria-label="count" className="h-fit">
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        disabled={count < 2}
-                        onClick={() => setCount((prev) => prev - 1)}
-                      >
-                        <MinusIcon />
-                      </Button>
-                      <InputGroup className="w-10 h-8">
-                        <InputGroupInput
-                          type="number"
-                          value={count}
-                          onChange={(e) =>
-                            setCount(Number(e.target.value) || 1)
-                          }
-                          className="px-1 text-center"
-                        />
-                      </InputGroup>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={() => setCount((prev) => prev + 1)}
-                      >
-                        <PlusIcon />
-                      </Button>
-                    </ButtonGroup>
-                    <div className="flex justify-end">
-                      <Button variant="link" className="text-blue-600 px-0">
-                        Удалить
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <Separator className="my-4" />
-              <div className="mt-auto md:mt-0">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="tracking-tight font-medium">Всего</p>
-                    <span className="tracking-tight font-medium">300$</span>
-                  </div>
-                  <p className="text-sm/tight text-gray-500 tracking-tight pt-2">
-                    Стоимость доставки и налоги рассчитываются <br />
-                    при оформлении заказа.
-                  </p>
-                </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -232,4 +392,4 @@ const Payment = () => {
   );
 };
 
-export default Payment;
+export default PaymentPage;

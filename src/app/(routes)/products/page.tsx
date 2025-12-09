@@ -1,8 +1,16 @@
+// app/(routes)/products/page.tsx
+"use client";
+
+import { Suspense } from "react";
 import { SlidersHorizontal } from "lucide-react";
-import React from "react";
+import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Filter } from "@/widgets/filter";
 import ProductsList from "@/widgets/product-list";
+import { fetchProducts } from "@/entities/product/api";
+import { useProductFilters } from "@/feature/products-filter/hooks/useProductFilters";
+import ActiveFilters from "@/feature/products-filter/ui/active-filters";
 
 import { BreadcrumbsDemo } from "@/shared/ui/breadcrumbs";
 import { Button } from "@/shared/ui/kit/button";
@@ -21,25 +29,111 @@ import {
   SelectValue,
 } from "@/shared/ui/kit/select";
 
-const Products = () => {
+import { GetProductsDto, SortBy, SortOrder, Product } from "@/entities/product/model/types";
+
+type SortOption = {
+  value: string;
+  label: string;
+  sort_by: SortBy;
+  sort_order: SortOrder;
+};
+
+const sortOptions: SortOption[] = [
+  { value: "popular", label: "Популярное", sort_by: "total_sold", sort_order: "desc" },
+  { value: "new", label: "Новинки", sort_by: "created_at", sort_order: "desc" },
+  { value: "expensive", label: "Дорогие", sort_by: "price", sort_order: "desc" },
+  { value: "cheap", label: "Дешевые", sort_by: "price", sort_order: "asc" },
+  { value: "interesting", label: "Интересные", sort_by: "rating", sort_order: "desc" },
+];
+
+function ProductsContent() {
+  const { currentSortType, applySort, currentParams } = useProductFilters();
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  
+  const { data: filterData } = useQuery({
+    queryKey: ["productsForFilter"],
+    queryFn: () => fetchProducts({ page: 1, size: 100 }),
+  });
+
+  const selectedSort = sortOptions.find(opt => opt.value === currentSortType) || sortOptions[0];
+
+  const listParams: Partial<GetProductsDto> = {
+    sort_by: selectedSort.sort_by,
+    sort_order: selectedSort.sort_order,
+    category: currentParams.category,
+    manufacturer: currentParams.manufacturer,
+    min_price: currentParams.min_price,
+    max_price: currentParams.max_price,
+    rating_from: currentParams.rating_from,
+    rating_to: currentParams.rating_to,
+    in_stock: currentParams.in_stock,
+  };
+
+  const { minPrice, maxPrice, categories, manufacturers } = useMemo(() => {
+    const products = filterData?.result || [];
+    
+    const productsWithPrice = products.filter((p: Product) => p.price != null);
+    
+    const min = productsWithPrice.length > 0 
+      ? Math.min(...productsWithPrice.map((p: Product) => p.price))
+      : 0;
+    
+    const max = productsWithPrice.length > 0 
+      ? Math.max(...productsWithPrice.map((p: Product) => p.price))
+      : 10000;
+    
+    const uniqueCategories = Array.from(
+      new Set(
+        products
+          .filter((p: Product) => p.category_name)
+          .map((p: Product) => p.category_name as string)
+          .filter(Boolean)
+      )
+    );
+    
+    const uniqueManufacturers = Array.from(
+      new Set(
+        products
+          .filter((p: Product) => p.manufacturer_name)
+          .map((p: Product) => p.manufacturer_name as string)
+          .filter(Boolean)
+      )
+    );
+    
+    return {
+      minPrice: min,
+      maxPrice: max,
+      categories: uniqueCategories as string[],
+      manufacturers: uniqueManufacturers as string[],
+    };
+  }, [filterData]);
+
   return (
     <div className="py-2 pb-12">
       <div className="container">
-        <BreadcrumbsDemo isProduct={false} />
+        <BreadcrumbsDemo 
+          isProduct={false}
+          categoryName={currentParams.category}
+        />
         <div className="flex flex-col gap-2 md:flex-row md:justify-between">
-          <h1 className="text-lg font-medium tracking-tight">Наушники (322)</h1>
+          <h1 className="text-lg font-medium tracking-tight">
+            {listParams.category ? listParams.category : "Категория"} ({totalCount !== null ? totalCount : "..."}) 
+          </h1>
           <div className="flex gap-2">
-            <Select value="today">
+            <Select
+              value={currentSortType}
+              onValueChange={applySort}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="today">Популярное</SelectItem>
-                  <SelectItem value="yesterday">Новинки</SelectItem>
-                  <SelectItem value="week">Дорогие</SelectItem>
-                  <SelectItem value="month">Дешевые</SelectItem>
-                  <SelectItem value="year">Интересные</SelectItem>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -52,20 +146,50 @@ const Products = () => {
               </DialogTrigger>
               <DialogContent className="p-0">
                 <DialogTitle></DialogTitle>
-                <Filter />
+                <Filter 
+                  products={filterData?.result || []}
+                  initialMinPrice={minPrice}
+                  initialMaxPrice={maxPrice}
+                  categories={categories}
+                  manufacturers={manufacturers}
+                />
               </DialogContent>
             </Dialog>
           </div>
         </div>
-        <div className="flex pt-4 gap-8 relative">
-          <div className="hidden md:block">
-            <Filter />
+        <ActiveFilters />
+        <div className="flex pt-4 relative">
+          <div className="hidden md:block w-80">
+            <Filter 
+              products={filterData?.result || []}
+              initialMinPrice={minPrice}
+              initialMaxPrice={maxPrice}
+              categories={categories}
+              manufacturers={manufacturers}
+            />
           </div>
-          <ProductsList />
+          <ProductsList 
+            params={listParams} 
+            onTotalCountChange={setTotalCount}
+          />
         </div>
       </div>
     </div>
   );
-};
+}
 
-export default Products;
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="py-2 pb-12">
+        <div className="container">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+    }>
+      <ProductsContent />
+    </Suspense>
+  );
+}

@@ -6,6 +6,6 @@ export type ListResponse<T> = {
 };
 
 export type ListParams = {
-  page: number | 1;
+  page: number;
   size: number | 20;
 };

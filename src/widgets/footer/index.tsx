@@ -11,7 +11,7 @@ const Footer = () => {
               href="/"
               className="flex gap-2 tracking-tight text-blue-600 text-2xl font-medium"
             >
-              название
+              #Быстро и точка
             </Link>
             <p className="text-gray-600 text-sm tracking-tight">
               © 2025 Рушан. All rights reserved.
@@ -19,14 +19,11 @@ const Footer = () => {
           </div>
           <div className="flex-1 flex justify-end">
             <ul className="flex flex-col text-lg tracking-tight text-end">
-              <li>Аксессуары</li>
-              <li>Контакты</li>
-              <li>Сервис</li>
               <li className="text-sm pt-4">
-                <a href="mailto:mail@mail.io">nazvanie @danya.com</a>
+                <a href="mailto:mail@mail.io">bystroitochka@yandex.ru</a>
               </li>
               <li className="text-sm">
-                <a href="mailto:mail@mail.io">+32 000 000 00</a>
+                <a href="mailto:mail@mail.io">+7 (999) 888 77-66</a>
               </li>
             </ul>
           </div>

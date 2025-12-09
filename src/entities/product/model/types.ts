@@ -7,15 +7,14 @@ export type Product = {
   description_long?: string;
   code?: string;
   unit_name?: string;
-  cashbox_id: number;
+  cashbox_id?: number;
   category_name?: string;
   manufacturer_name?: string;
   price: number;
-  // TODO: must be enum
-  price_type: string;
-  created_at: Date;
-  updated_at: Date;
-  images?: string[];
+  price_type?: string;
+  created_at?: string;
+  updated_at?: string;
+  images: string[];
   barcodes?: string[];
   type?: string;
   distance?: number;
@@ -23,43 +22,75 @@ export type Product = {
   listing_page?: number;
   is_ad_pos?: boolean;
   tags?: string[];
-  // TODO: Clarify object
-  variations?: object[];
+  variations?: any[];
   current_amount?: number;
   seller_name?: string;
   seller_photo?: string;
+  seller_description?: string;
   total_sold?: number;
   rating?: number;
   reviews_count?: number;
-  available_warehouses?: Warehouse[];
+  available_warehouses?: Array<{
+    warehouse_id: number;
+    organization_id: number;
+    warehouse_name: string;
+    warehouse_address: string;
+    latitude: number;
+    longitude: number;
+    distance_to_client: number;
+    current_amount: number;
+  }>;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string[];
+  attributes?: Array<{
+    name: string;
+    value: string;
+  }>;
+  nomenclatures?: any[];
+  processing_time_ms?: number;
 };
 
-// TODO: move to another file @/shared/types/X.ts
-export type SortBy =
-  | "distance"
-  | "price"
-  | "name"
-  | "rating"
-  | "total_sold"
-  | "created_at"
-  | "updated_at";
+export type SortBy = "price" | "name" | "total_sold" | "rating" | "created_at" | "updated_at";
 export type SortOrder = "asc" | "desc";
+export type SortType = "popular" | "new" | "expensive" | "cheap" | "interesting";
 
-export interface GetProductsDto extends ListParams {
+
+export interface GetProductsDto {
   phone?: string;
+  size?: number;
   lat?: number;
   lon?: number;
   sort_by?: SortBy;
   sort_order?: SortOrder;
   category?: string;
   manufacturer?: string;
-  min_price?: string;
-  max_price?: string;
+  min_price?: number;
+  max_price?: number;
   in_stock?: boolean;
   rating_from?: number;
   rating_to?: number;
+  sort_type?: SortType;
+  page?: number,
 }
 
 export interface GetProductDto {
-  product_id: string;
+  product_id: number;
 }
+
+export interface ProductFilters {
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  maxRating?: number;
+  brands?: string[];
+  category?: string;
+  inStock?: boolean;
+}
+
+export type SortOption = {
+  value: string;
+  label: string;
+  sort_by: SortBy;
+  sort_order: SortOrder;
+};

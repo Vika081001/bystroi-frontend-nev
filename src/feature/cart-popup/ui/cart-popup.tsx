@@ -39,7 +39,7 @@ export const CartPopup = () => {
         <div className="flex flex-col gap-2 pt-4 flex-1">
           {data?.goods.map((item) => (
             <>
-              <CartItem />
+              <CartItem item={{ ...item, quantity: item.quantity as number }} />
               <Separator className="my-4" />
             </>
           ))}

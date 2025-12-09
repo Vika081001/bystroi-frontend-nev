@@ -1,9 +1,27 @@
-import { ArrowRight, ShoppingCart } from "lucide-react";
-import React from "react";
+// widgets/product/deals.tsx
+"use client";
 
-import { Button } from "@/shared/ui/kit/button";
+import React from 'react';
+import { ArrowRight } from 'lucide-react';
 
-const Deals = () => {
+import { Product, useProducts } from '@/entities/product';
+import { ProductCard } from '@/entities/product';
+import { ProductCardSkeleton } from '@/entities/product/ui/product-card-skeleton';
+import { Button } from '@/shared/ui/kit/button';
+
+export const Deals = () => {
+  const params = {
+    size: 20,
+    sort_by: 'total_sold' as const,
+    sort_order: 'desc' as const,
+  };
+
+  const { data, isLoading } = useProducts(params);
+
+  if (!data?.result?.length) {
+    return null;
+  }
+
   return (
     <section className="py-8">
       <div className="container">
@@ -17,10 +35,15 @@ const Deals = () => {
           </Button>
         </div>
         <div className="pt-4 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {/* {Array.from({ length: 14 }, (_, i) => i + 1).map((index) => (
-                        <ProductItem key={index} />
-                    ))} */}
-          {/* <ProductsList /> */}
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))
+          ) : (
+            data.result.slice(0, 12).map((product: Product, index: number) => (
+              <ProductCard key={product.id} {...product} />
+            ))
+          )}
         </div>
         <div className="md:hidden pt-4">
           <Button variant="outline">

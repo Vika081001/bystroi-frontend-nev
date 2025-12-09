@@ -13,6 +13,18 @@ export interface GetFavoritesParams extends ListParams {
 }
 
 export interface DeleteFavorite {
-  favorite_id: number;
-  phone: number;
+  nomenclature_id: number;
+  phone: string;
+}
+
+export interface AddToFavoriteDto {
+  nomenclature_id: number;
+  contragent_phone: string;
+}
+
+export interface FavoritesResponse {
+  result: Favorite[];
+  count: number;
+  page: number;
+  size: number;
 }

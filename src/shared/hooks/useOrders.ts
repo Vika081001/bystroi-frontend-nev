@@ -1,20 +1,21 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useContragentPhone } from "../hooks/useContragentPhone";
 
-import { apiClient } from "@/shared/api/client";
-import { ListResponse } from "@/shared/types/api";
-
+import * as orderApi from "../api/createOrder"
 import { CreateOrderParams } from "../types/order";
 
 export const useCreateOrder = () => {
   const queryClient = useQueryClient();
+  const contragentPhone = useContragentPhone();
 
   return useMutation({
-    mutationFn: async (orderData: CreateOrderParams) => {
-      const response = await apiClient.post("/orders", orderData);
-      return response.data;
+    mutationFn: async (orderData: Omit<CreateOrderParams, "contragent_phone">) => {
+      return orderApi.createOrder({
+        ...orderData,
+        contragent_phone: contragentPhone,
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["cart"] });
     },
   });

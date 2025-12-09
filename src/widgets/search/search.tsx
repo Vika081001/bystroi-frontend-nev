@@ -1,0 +1,142 @@
+"use client";
+
+import { Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useState, useRef, useEffect } from "react";
+
+import { SearchSuggestions } from "@/feature/search-suggestions/ui/search-suggestions";
+
+import { Input } from "@/shared/ui/kit/input";
+
+export const SearchBar = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsExpanded(false);
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setIsExpanded(false);
+      setShowSuggestions(false);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const performSearch = (query?: string) => {
+    const searchTerm = query || searchQuery;
+    if (searchTerm.trim()) {
+      setIsExpanded(false);
+      setShowSuggestions(false);
+      router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsExpanded(false);
+      setShowSuggestions(false);
+      inputRef.current?.blur();
+    }
+    if (e.key === "Enter" && searchQuery.trim()) {
+      performSearch();
+    }
+  };
+
+  const handleFocus = () => {
+    setIsExpanded(true);
+    setShowSuggestions(true);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setShowSuggestions(true);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    inputRef.current?.focus();
+  };
+
+  const handleCloseSuggestions = () => {
+    setIsExpanded(false);
+    setShowSuggestions(false);
+  };
+
+  const handleSelect = () => {
+    setIsExpanded(false);
+    setShowSuggestions(false);
+  };
+
+  const handleSearchButtonClick = () => {
+    performSearch();
+  };
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="relative flex-1 max-w-xl mx-4"
+    >
+      <form onSubmit={handleSearchSubmit} className="relative rounded-md border-2 border-blue-500 bg-blue-500">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none z-10 cursor-pointer" />
+        <Input
+          ref={inputRef}
+          type="text"
+          placeholder="Поиск товаров..."
+          value={searchQuery}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={handleFocus}
+          className="pl-10 pr-10 w-5/6 bg-white cursor-pointer focus-visible:border-1 focus-visible:border-blue-500 focus-visible:ring-0 focus-visible:outline-none"
+        />
+        <button
+          onClick={handleSearchButtonClick}
+          className="bg-blue-500 text-white rounded-l-sm hover:bg-blue-600 transition-colors inline absolute bottom-0 right-0 w-20 h-9 cursor-pointer"
+        >
+          Найти
+        </button>
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={clearSearch}
+            className="absolute right-23 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10 cursor-pointer"
+          >
+            <X className="w-4 h-4 cursor-pointer" />
+          </button>
+        )}
+      </form>
+
+      {showSuggestions && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 shadow-xl rounded-lg overflow-hidden">
+          <div className="bg-white border border-gray-200">
+            <SearchSuggestions
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              onSearchSubmit={() => performSearch()}
+              onClose={handleCloseSuggestions}
+              onSelect={handleSelect}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

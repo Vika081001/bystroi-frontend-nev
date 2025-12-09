@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import * as productApi from "../api";
-import { GetProductDto, GetProductsDto } from "./types";
+import { GetProductDto, GetProductsDto } from "../model/types";
 
 export const productKeys = {
   root: ["product"] as const,
@@ -31,9 +31,9 @@ export const useInfProducts = (params: Omit<GetProductsDto, "page">) => {
       const pageSize = params.size || 20;
 
       if (!lastPage.result || lastPage.result.length < pageSize) {
-        return undefined; // Больше страниц нет
+        return undefined;
       }
-      return allPages.length + 1; // Следующая страница
+      return allPages.length + 1;
     },
   });
 };

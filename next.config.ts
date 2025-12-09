@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   trailingSlash: true,
   experimental: {
-    useCache: true, // Добавляем эту опцию
+    useCache: true,
   },
   images: {
     unoptimized: true,
@@ -18,5 +18,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // typescript: {
+  //   ignoreBuildErrors: true,
+  // },
+  // eslint: {
+  //   ignoreDuringBuilds: true,
+  // },
 };
 export default nextConfig;

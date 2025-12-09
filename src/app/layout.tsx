@@ -21,8 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`bg-white text-gray-800 ${inter.className}`}>
+    <html lang="en" className={`bg-white text-gray-800 ${inter.className}`} >
       <body className="h-screen relative z-10">
+        
         <Providers>
           <Header />
           <main>{children}</main>

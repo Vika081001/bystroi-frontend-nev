@@ -1,8 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/shared/api/client";
-import { ListResponse } from "@/shared/types/api";
-import { Favorite } from "@/shared/types/favorite";
+import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
+import { 
+  fetchFavorites, 
+  addToFavorites, 
+  removeFromFavorites 
+} from "@/shared/api/favorites";
+import { 
+  FavoritesResponse, 
+  GetFavoritesParams, 
+  AddToFavoriteDto 
+} from "@/shared/types/favorite";
 
 interface FavoritesParams {
   page?: number;
@@ -10,49 +19,70 @@ interface FavoritesParams {
 }
 
 export const useFavorites = (params: FavoritesParams = {}) => {
-  return useQuery<ListResponse<Favorite[]>>({
-    queryKey: ["favorites", params],
+  const contragentPhone = useContragentPhone();
+  
+  return useQuery<FavoritesResponse>({
+    queryKey: ["favorites", contragentPhone, params],
     queryFn: async () => {
-      const response = await apiClient.get("/favorites", { params });
-      return response.data;
+      return fetchFavorites({
+        phone: contragentPhone,
+        page: params.page || 1,
+        size: params.size || 20,
+      });
     },
+    enabled: !!contragentPhone,
   });
 };
 
 export const useAddToFavorites = () => {
   const queryClient = useQueryClient();
+  const contragentPhone = useContragentPhone();
 
   return useMutation({
-    mutationFn: async (productId: string) => {
-      const response = await apiClient.post("/favorites", { productId });
-      return response.data;
+    mutationFn: async (nomenclature_id: number) => {
+      return addToFavorites({
+        nomenclature_id,
+        contragent_phone: contragentPhone,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
+    },
+    onError: (error) => {
+      console.error("Ошибка при добавлении в избранное:", error);
     },
   });
 };
 
 export const useRemoveFromFavorites = () => {
   const queryClient = useQueryClient();
+  const contragentPhone = useContragentPhone();
 
   return useMutation({
-    mutationFn: async (productId: string) => {
-      await apiClient.delete(`/favorites/${productId}`);
+    mutationFn: async (nomenclature_id: number) => {
+      return removeFromFavorites({
+        nomenclature_id,
+        phone: contragentPhone,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
     },
+    onError: (error) => {
+      console.error("Ошибка при удалении из избранного:", error);
+    },
   });
 };
 
-export const useIsFavorite = (productId: string) => {
-  return useQuery<boolean>({
-    queryKey: ["favorite", productId],
-    queryFn: async () => {
-      const response = await apiClient.get(`/favorites/check/${productId}`);
-      return response.data;
-    },
-    enabled: !!productId,
-  });
+export const useIsFavorite = (nomenclature_id: number) => {
+  const { data: favorites } = useFavorites();
+  
+  return {
+    isFavorite: favorites?.result?.some(
+      (item) => item.nomenclature_id === nomenclature_id
+    ) || false,
+    favoriteId: favorites?.result?.find(
+      (item) => item.nomenclature_id === nomenclature_id
+    )?.id,
+  };
 };

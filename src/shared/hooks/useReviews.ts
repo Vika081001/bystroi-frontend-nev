@@ -10,7 +10,7 @@ import {
 } from "@/shared/types/review";
 
 export const useReviews = (params: GetReviewsParams) => {
-  return useQuery<ListResponse<Review[]>>({
+  return useQuery<ListResponse<Review[]> & { avg_rating?: number }>({
     queryKey: ["reviews", params],
     queryFn: async () => {
       const response = await apiClient.get("/reviews", { params });

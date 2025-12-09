@@ -1,108 +1,438 @@
-import { Clock8, Flame } from "lucide-react";
+// SearchSuggestions.tsx
+"use client";
+
+import { Clock8, Flame, Loader2, X } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { Badge } from "@/shared/ui/kit/badge";
 import { Separator } from "@/shared/ui/kit/separator";
+import { Skeleton } from "@/shared/ui/kit/skeleton";
 
-export const SearchSuggestions = () => {
+import { transformImageUrl } from "@/shared/lib/image-utils";
+
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  images: string[];
+  category_name?: string;
+  manufacturer_name?: string;
+}
+
+interface SearchResult {
+  products: Product[];
+  loading: boolean;
+  error: string | null;
+}
+
+interface SearchSuggestionsProps {
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  onSearchSubmit: () => void;
+  onClose: () => void;
+  onSelect?: () => void;
+}
+
+export const SearchSuggestions = ({ 
+  searchQuery, 
+  onSearchQueryChange, 
+  onSearchSubmit, 
+  onClose,
+  onSelect 
+}: SearchSuggestionsProps) => {
+  const [debouncedQuery] = useDebounce(searchQuery, 300);
+  const [searchResults, setSearchResults] = useState<SearchResult>({
+    products: [],
+    loading: false,
+    error: null,
+  });
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [loadingPopular, setLoadingPopular] = useState<boolean>(true);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const allPopularQueries = useMemo(() => [
+    "iPhone 14", "iPhone 15", "Apple MacBook Pro", "MacBook Air", 
+    "AirPods Pro", "AirPods Max", "Samsung Galaxy S23", "Samsung Galaxy Z Fold",
+    "Ноутбуки", "Игровые ноутбуки", "Смартфоны", "Планшеты", "Наушники",
+    "Телевизоры", "Холодильники", "Стиральные машины", "Пылесосы",
+    "Микроволновки", "Кофемашины", "Электросамокаты", "Смарт-часы",
+    "Фитнес-браслеты", "Игровые приставки", "PlayStation 5", "Xbox Series X",
+    "Видеокарты", "Процессоры", "Мониторы", "Клавиатуры", "Мышки",
+    "Коврики для мыши", "Веб-камеры", "Колонки", "Зарядные устройства",
+    "Power Bank", "Чехлы для телефона", "Защитные стекла", "Кабели USB-C"
+  ], []);
+
+  const randomPopularQueries = useMemo(() => {
+    const shuffled = [...allPopularQueries].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 6);
+  }, [allPopularQueries]);
+
+  useEffect(() => {
+    if (isClient) {
+      loadSearchHistory();
+      loadPopularProducts();
+      loadRecentlyViewed();
+    }
+  }, [isClient]);
+
+  useEffect(() => {
+    if (isClient && debouncedQuery?.trim().length > 0) {
+      performSearch(debouncedQuery);
+    } else {
+      setSearchResults({
+        products: [],
+        loading: false,
+        error: null,
+      });
+    }
+  }, [debouncedQuery, isClient]);
+
+  const loadSearchHistory = () => {
+    if (typeof window === 'undefined') return;
+    
+    const savedHistory = localStorage.getItem("searchHistory");
+    if (savedHistory) {
+      try {
+        setSearchHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error("Ошибка загрузки истории поиска:", error);
+      }
+    }
+  };
+
+  const saveToSearchHistory = (query: string) => {
+    if (!query.trim() || typeof window === 'undefined') return;
+    
+    const updatedHistory = [
+      query,
+      ...searchHistory.filter(item => item.toLowerCase() !== query.toLowerCase())
+    ].slice(0, 10);
+    
+    setSearchHistory(updatedHistory);
+    localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
+  };
+
+  const loadPopularProducts = async () => {
+    if (!isClient) return;
+    
+    setLoadingPopular(true);
+    try {
+      const response = await fetch(
+        `https://app.tablecrm.com/api/v1/mp/products?size=6&sort_by=total_sold&sort_order=desc`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setPopularProducts(data.result || []);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки популярных товаров:", error);
+    } finally {
+      setLoadingPopular(false);
+    }
+  };
+
+  const loadRecentlyViewed = () => {
+    if (typeof window === 'undefined') return;
+    
+    const savedRecentlyViewed = localStorage.getItem("recentlyViewed");
+    if (savedRecentlyViewed) {
+      try {
+        setRecentlyViewed(JSON.parse(savedRecentlyViewed));
+      } catch (error) {
+        console.error("Ошибка загрузки недавно просмотренных:", error);
+      }
+    }
+  };
+
+  const saveToRecentlyViewed = (product: Product) => {
+    if (typeof window === 'undefined') return;
+    
+    const updatedViewed = [
+      product,
+      ...recentlyViewed.filter(item => item.id !== product.id)
+    ].slice(0, 6);
+    
+    setRecentlyViewed(updatedViewed);
+    localStorage.setItem("recentlyViewed", JSON.stringify(updatedViewed));
+  };
+
+  const performSearch = async (query: string) => {
+    setSearchResults(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      const response = await fetch(
+        `https://app.tablecrm.com/api/v1/mp/products?size=20&sort_by=name&sort_order=asc`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      const filteredProducts = (data.result || []).filter((product: Product) =>
+        product.name.toLowerCase().includes(query.toLowerCase()) ||
+        product.category_name?.toLowerCase().includes(query.toLowerCase()) ||
+        product.manufacturer_name?.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      setSearchResults({
+        products: filteredProducts.slice(0, 10),
+        loading: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error("Ошибка поиска товаров:", error);
+      setSearchResults({
+        products: [],
+        loading: false,
+        error: "Ошибка при поиске товаров. Попробуйте позже.",
+      });
+    }
+  };
+
+  const handleClearSearch = () => {
+    onSearchQueryChange("");
+  };
+
+  const handleHistoryClick = (query: string) => {
+    onSearchQueryChange(query);
+    saveToSearchHistory(query);
+    onClose();
+    if (onSelect) onSelect();
+  };
+
+  const handleProductClick = (product: Product) => {
+    saveToRecentlyViewed(product);
+    onClose();
+    if (onSelect) onSelect();
+  };
+
+  const handlePopularQueryClick = (query: string) => {
+    onSearchQueryChange(query);
+    saveToSearchHistory(query);
+    onClose();
+    if (onSelect) onSelect();
+  };
+
   return (
-    <div className="bg-white rounded-md w-2xl shadow-lg ring ring-gray-100">
-      <div className="p-4">
-        <div className="flex items-center gap-1">
-          <p className="font-medium tracking-tight">Популярные продукты</p>
-          <Flame width={16} height={16} className="text-amber-400" />
+    <div className="bg-white rounded-lg w-full max-w-2xl shadow-lg">
+      {searchQuery && (
+        <>
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium tracking-tight">
+                Результаты поиска &quot;{searchQuery}&quot;
+              </p>
+              {searchResults.loading && (
+                <div className="text-sm text-gray-500">Поиск...</div>
+              )}
+            </div>
+            
+            {searchResults.error ? (
+              <div className="text-red-500 text-sm py-2">{searchResults.error}</div>
+            ) : searchResults.loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Skeleton className="w-8 h-8 rounded" />
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="w-16 h-4" />
+                  </div>
+                ))}
+              </div>
+            ) : searchResults.products.length > 0 ? (
+              <ul className="space-y-2 max-h-96 overflow-y-auto">
+                {searchResults.products.map((product) => (
+                  <li key={product.id}>
+                    <Link
+                      href={`/product/${product.id}`}
+                      onClick={() => handleProductClick(product)}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors group"
+                    >
+                      <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden">
+                        {product.images?.[0] ? (
+                          <img
+                            src={product.images?.[0] ? transformImageUrl(product.images[0]) : undefined}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder.svg';
+                            }}
+                          />
+                        ) : (
+                          <div className="text-gray-400 text-xs text-center">
+                            Нет фото
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-blue-600">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {product.manufacturer_name || product.category_name}
+                        </p>
+                      </div>
+                      <div className="text-sm font-semibold">
+                        ₽{product.price}
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-gray-500 text-center py-4">
+                По запросу &quot;{searchQuery}&quot; ничего не найдено
+              </div>
+            )}
+          </div>
+          <Separator />
+        </>
+      )}
+
+      {!searchQuery && (
+        <>
+          <div className="p-4">
+            <div className="flex items-center gap-1 mb-2">
+              <p className="font-medium tracking-tight">Популярные запросы</p>
+              <Flame width={16} height={16} className="text-amber-400" />
+            </div>
+            <div className="flex gap-1 pt-2 flex-wrap">
+              {randomPopularQueries.map((query, index) => (
+                <button
+                  key={index}
+                  onClick={() => handlePopularQueryClick(query)}
+                  className="inline-flex items-center"
+                >
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                  >
+                    {query}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+          <Separator />
+        </>
+      )}
+
+      {searchHistory.length > 0 && !searchQuery && (
+        <>
+          <div className="pt-4">
+            <div className="px-4">
+              <p className="font-medium tracking-tight">История поиска</p>
+            </div>
+            <ul className="pt-2 flex flex-col">
+              {searchHistory.slice(0, 7).map((query, index) => (
+                <li key={index}>
+                  <button
+                    onClick={() => handleHistoryClick(query)}
+                    className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2 w-full text-left"
+                  >
+                    <Clock8 className="text-gray-400" width={16} height={16} />
+                    <p className="tracking-tight text-sm truncate">{query}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <Separator />
+        </>
+      )}
+
+      {!searchQuery && (
+        <div className="p-4 w-full h-80">
+          <p className="font-medium tracking-tight">Популярные товары</p>
+          <div className="grid grid-cols-3 gap-2 pt-4">
+            {loadingPopular ? (
+              <div className="col-span-3 flex items-center justify-center py-8 h-55">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            ) : popularProducts.length > 0 ? (
+              popularProducts.slice(0, 6).map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/product/${product.id}`}
+                  onClick={() => handleProductClick(product)}
+                  className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100 flex flex-col items-center text-center"
+                >
+                  <div className="w-16 h-16 rounded-md bg-gray-100 mb-2 overflow-hidden flex items-center justify-center">
+                    {product.images?.[0] ? (
+                      <img
+                        src={product.images?.[0] ? transformImageUrl(product.images[0]) : undefined}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-xs">Нет фото</div>
+                    )}
+                  </div>
+                  <p className="text-xs font-medium truncate w-full">
+                    {product.name}
+                  </p>
+                  <p className="text-xs text-gray-500">{product.price.toLocaleString("ru-RU")}₽</p>
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-3 text-center text-gray-500 py-4">
+                Нет популярных товаров
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex gap-1 pt-2 flex-wrap">
-          <Badge variant="outline">Iphone 14</Badge>
-          <Badge variant="outline">Apple MacBook 14 Pro</Badge>
-          <Badge variant="outline">козинаки</Badge>
-          <Badge variant="outline">козинаки</Badge>
-          <Badge variant="outline">козинаки</Badge>
-          <Badge variant="outline">козинаки</Badge>
-          <Badge variant="outline">козинаки</Badge>
-          <Badge variant="outline">козинаки</Badge>
-          <Badge variant="outline">козинаки123</Badge>
-        </div>
-      </div>
-      <Separator />
-      <div className="pt-4">
-        <div className="px-4">
-          <p className="font-medium tracking-tight">Недавные поиски</p>
-        </div>
-        <ul className="pt-2 flex flex-col">
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-          <li className="flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-100 py-2">
-            <Clock8 className="text-gray-400" width={16} height={16} />
-            <p className="tracking-tight text-sm">AirPods 11 Pro</p>
-          </li>
-        </ul>
-      </div>
-      <Separator />
-      <div className="p-4">
-        <p className="font-medium tracking-tight">Недавно рассмотренные</p>
-        <div className="grid grid-cols-6 gap-2 pt-4">
-          <Link
-            href="/"
-            className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100"
-          >
-            <img src="/airpods.png" />
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100"
-          >
-            <img src="/airpods.png" />
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100"
-          >
-            <img src="/airpods.png" />
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100"
-          >
-            <img src="/airpods.png" />
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100"
-          >
-            <img src="/airpods.png" />
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100"
-          >
-            <img src="/airpods.png" />
-          </Link>
-        </div>
-      </div>
+      )}
+
+      {recentlyViewed.length > 0 && !searchQuery && (
+        <>
+          <Separator />
+          <div className="p-4">
+            <p className="font-medium tracking-tight">Недавно просмотренные</p>
+            <div className="grid grid-cols-3 gap-2 pt-4">
+              {recentlyViewed.slice(0, 6).map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/product/${product.id}`}
+                  onClick={() => handleProductClick(product)}
+                  className="rounded-md hover:bg-gray-100 p-2 hover:ring-1 hover:ring-gray-100 flex flex-col items-center text-center"
+                >
+                  <div className="w-16 h-16 rounded-md bg-gray-100 mb-2 overflow-hidden flex items-center justify-center">
+                    {product.images?.[0] ? (
+                      <img
+                        src={product.images?.[0] ? transformImageUrl(product.images[0]) : undefined}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-xs">Нет фото</div>
+                    )}
+                  </div>
+                  <p className="text-xs font-medium truncate w-full">
+                    {product.name}
+                  </p>
+                  <p className="text-xs text-gray-500">{product.price.toLocaleString("ru-RU")}₽</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

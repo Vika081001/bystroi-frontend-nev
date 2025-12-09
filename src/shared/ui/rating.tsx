@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 
-// Или ваша библиотека иконок
+
 
 type Props = {
   size: number;
