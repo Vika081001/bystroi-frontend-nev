@@ -99,7 +99,7 @@ export const CategoryMenu = () => {
                       />
                     ) : (
                       <img
-                        src="/airpods.jpeg"
+                        src="https://avatars.mds.yandex.net/i?id=c5ca2b4ff0c629b038e6630fbc5eb33911f331f5-4872059-images-thumbs&n=13"
                         className="w-full object-cover"
                         alt="placeholder"
                       />
@@ -132,8 +132,8 @@ export const CategoryMenu = () => {
                           />
                         ) : (
                           <img
-                            src="/airpods.jpeg"
-                            className="w-full object-cover"
+                            src="https://avatars.mds.yandex.net/i?id=c5ca2b4ff0c629b038e6630fbc5eb33911f331f5-4872059-images-thumbs&n=13"
+                            className="w-full object-fill"
                             alt="placeholder"
                           />
                         )}
