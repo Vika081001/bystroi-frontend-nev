@@ -245,29 +245,51 @@ function SearchPageContent() {
             </div>
 
             <div className="mb-4">
-              <h3 className="font-medium mb-2">Категория</h3>
+              <h3 className="font-medium mb-2 text-gray-700">Категория</h3>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-between"
+                    className="w-full justify-between border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors"
                   >
-                    {filters.category || "Все категории"}
-                    <ChevronDown className="w-4 h-4" />
+                    <span className="text-gray-800 truncate">
+                      {filters.category || "Все категории"}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 max-h-60 overflow-y-auto">
-                  <DropdownMenuItem onClick={() => handleFilterChange("category", "")}>
-                    Все категории
+                <DropdownMenuContent 
+                  className="w-52 max-h-60 overflow-y-auto bg-white border border-gray-200 shadow-lg rounded-md"
+                  align="start"
+                >
+                  <DropdownMenuItem 
+                    onClick={() => handleFilterChange("category", "")}
+                    className="flex items-center px-3 py-2.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <div className={`flex items-center w-full ${!filters.category ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
+                      <span>Все категории</span>
+                    </div>
                   </DropdownMenuItem>
+                  
+                  <div className="border-t border-gray-100 my-1" />
+                  
                   {categories.map((cat) => (
                     <DropdownMenuItem
                       key={cat}
                       onClick={() => handleFilterChange("category", cat)}
+                      className="flex items-center px-3 py-2.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
                     >
-                      {cat}
+                      <div className={`flex items-center w-full ${filters.category === cat ? 'text-blue-600 font-medium' : 'text-gray-700'}`}>
+                        <span className="truncate">{cat}</span>
+                      </div>
                     </DropdownMenuItem>
                   ))}
+                  
+                  {categories.length === 0 && (
+                    <div className="px-3 py-3 text-center">
+                      <p className="text-gray-400 text-sm">Нет категорий</p>
+                    </div>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -359,14 +381,14 @@ function SearchPageContent() {
           </div>
 
           {loading && page === 1 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-5">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
           ) : products.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-5">
                 {products.map((product) => (
                   <ProductCard key={product.id} {...product} />
                 ))}

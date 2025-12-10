@@ -85,7 +85,7 @@ export const FavoriteButton = ({
         className={cn(
           "absolute transition-all duration-300",
           isFavorite
-            ? "fill-red-800 text-red-800 scale-100"
+            ? "fill-red-700 text-red-700 scale-100"
             : "fill-transparent text-gray-400 scale-100",
           isDeactivating && "scale-0",
           isAnimating && "animate-ping"
@@ -108,7 +108,7 @@ export const FavoriteButton = ({
       )}
 
       {isAnimating && (
-        <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
+        <div className="absolute inset-0 rounded-full bg-red-700/20 animate-ping" />
       )}
       
       <style jsx>{`

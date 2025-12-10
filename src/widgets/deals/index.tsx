@@ -8,6 +8,7 @@ import { Product, useProducts } from '@/entities/product';
 import { ProductCard } from '@/entities/product';
 import { ProductCardSkeleton } from '@/entities/product/ui/product-card-skeleton';
 import { Button } from '@/shared/ui/kit/button';
+import Link from 'next/link';
 
 export const Deals = () => {
   const params = {
@@ -29,9 +30,11 @@ export const Deals = () => {
           <h2 className="font-medium text-lg tracking-tight">
             Лучшие предложения для вас
           </h2>
-          <Button variant="outline" className="hidden md:flex">
-            Все предложения
-            <ArrowRight width={16} height={16} />
+          <Button variant="outline" className="hidden md:flex cursor-pointer">
+            <Link href="/products">
+              Все предложения
+              <ArrowRight width={16} height={16} className='inline ml-1' />
+            </Link>
           </Button>
         </div>
         <div className="pt-4 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

@@ -105,7 +105,7 @@ export const SearchBar = () => {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
-          className="pl-10 pr-10 w-5/6 bg-white cursor-pointer focus-visible:border-1 focus-visible:border-blue-500 focus-visible:ring-0 focus-visible:outline-none"
+          className="pl-10 pr-10 w-5/6 bg-white focus-visible:border-1 focus-visible:border-blue-500 focus-visible:ring-0 focus-visible:outline-none"
         />
         <button
           onClick={handleSearchButtonClick}

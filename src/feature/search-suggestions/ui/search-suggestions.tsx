@@ -11,6 +11,7 @@ import { Separator } from "@/shared/ui/kit/separator";
 import { Skeleton } from "@/shared/ui/kit/skeleton";
 
 import { transformImageUrl } from "@/shared/lib/image-utils";
+import { LocaleRouteNormalizer } from "next/dist/server/normalizers/locale-route-normalizer";
 
 interface Product {
   id: number;
@@ -142,7 +143,7 @@ export const SearchSuggestions = ({
   const loadRecentlyViewed = () => {
     if (typeof window === 'undefined') return;
     
-    const savedRecentlyViewed = localStorage.getItem("recentlyViewed");
+    const savedRecentlyViewed = localStorage.getItem("productViewHistory");
     if (savedRecentlyViewed) {
       try {
         setRecentlyViewed(JSON.parse(savedRecentlyViewed));
@@ -161,7 +162,7 @@ export const SearchSuggestions = ({
     ].slice(0, 6);
     
     setRecentlyViewed(updatedViewed);
-    localStorage.setItem("recentlyViewed", JSON.stringify(updatedViewed));
+    localStorage.setItem("productViewHistory", JSON.stringify(updatedViewed));
   };
 
   const performSearch = async (query: string) => {

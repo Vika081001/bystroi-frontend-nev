@@ -243,7 +243,7 @@ const ProductInfo = ({
                       <DialogHeader>
                         <DialogTitle>Наличие на складах</DialogTitle>
                       </DialogHeader>
-                      <div className="space-y-3">
+                      <div className="space-y-3 overflow-y-auto max-h-130">
                         {available_warehouses.map((warehouse: any) => (
                           <div key={warehouse.warehouse_id} className="border rounded-lg p-3">
                             <p className="font-medium">{warehouse.warehouse_name}</p>
