@@ -31,18 +31,38 @@ export const SearchBar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const saveSearchToHistory = (query: string) => {
+    if (!query.trim() || typeof window === 'undefined') return;
+    
+    const savedHistory = localStorage.getItem("searchHistory");
+    let history: string[] = [];
+    
+    if (savedHistory) {
+      try {
+        history = JSON.parse(savedHistory);
+      } catch (error) {
+        console.error("Ошибка загрузки истории поиска:", error);
+      }
+    }
+
+    const updatedHistory = [
+      query,
+      ...history.filter(item => item.toLowerCase() !== query.toLowerCase())
+    ].slice(0, 10);
+    
+    localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setIsExpanded(false);
-      setShowSuggestions(false);
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
+    performSearch();
   };
 
   const performSearch = (query?: string) => {
     const searchTerm = query || searchQuery;
     if (searchTerm.trim()) {
+      saveSearchToHistory(searchTerm.trim());
+      
       setIsExpanded(false);
       setShowSuggestions(false);
       router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
@@ -56,6 +76,7 @@ export const SearchBar = () => {
       inputRef.current?.blur();
     }
     if (e.key === "Enter" && searchQuery.trim()) {
+      saveSearchToHistory(searchQuery.trim());
       performSearch();
     }
   };
@@ -87,6 +108,9 @@ export const SearchBar = () => {
   };
 
   const handleSearchButtonClick = () => {
+    if (searchQuery.trim()) {
+      saveSearchToHistory(searchQuery.trim());
+    }
     performSearch();
   };
 
@@ -108,6 +132,7 @@ export const SearchBar = () => {
           className="pl-10 pr-10 w-5/6 bg-white focus-visible:border-1 focus-visible:border-blue-500 focus-visible:ring-0 focus-visible:outline-none"
         />
         <button
+          type="button"
           onClick={handleSearchButtonClick}
           className="bg-blue-500 text-white rounded-l-sm hover:bg-blue-600 transition-colors inline absolute bottom-0 right-0 w-20 h-9 cursor-pointer"
         >

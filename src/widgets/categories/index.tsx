@@ -101,7 +101,7 @@ const Categories = () => {
                     />
                   )}
                 </div>
-                <p className="leading-4 pt-3 text-xl font-medium tracking-tight relative text-white">
+                <p className="leading-4 pt-3 text-xl tracking-tight relative text-white">
                   {category.name}
                 </p>
               </a>
