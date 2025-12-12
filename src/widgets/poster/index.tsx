@@ -8,25 +8,25 @@ const Poster = () => {
   const slides = [
     {
       id: 1,
-      image: "https://b.fotohosting.pro/2025/12/12/DOM-BEZ-KNOPKI.png",
+      image: "https://b.fotohosting.pro/2025/12/13/TVETY-14.png",
       buttonText: "Смотреть предложения",
       buttonLink: "/products"
     },
     {
       id: 2,
-      image: "https://a.fotohosting.pro/2025/12/12/EDA-BEZ-KNOPKI.png",
+      image: "https://a.fotohosting.pro/2025/12/13/TVETY-13.png",
       buttonText: "Заказать еду",
       buttonLink: "/products"
     },
     {
       id: 3,
-      image: "https://b.fotohosting.pro/2025/12/12/TVETY-2-BEZ-KNOPKI.png",
+      image: "https://b.fotohosting.pro/2025/12/13/TVETY-12.png",
       buttonText: "Заказать цветы",
       buttonLink: "/products"
     },
     {
       id: 4,
-      image: "https://a.fotohosting.pro/2025/12/12/TVETY-1-BEZ-KNOPKI.png",
+      image: "https://a.fotohosting.pro/2025/12/13/TVETY-11.png",
       buttonText: "Заказать цветы",
       buttonLink: "/products"
     }
@@ -34,12 +34,6 @@ const Poster = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-
-  const extendedSlides = [
-    slides[slides.length - 1],
-    ...slides,
-    slides[0],
-  ];
 
   const getPrevIndex = (current: number) => {
     return current === 0 ? slides.length - 1 : current - 1;
@@ -79,75 +73,53 @@ const Poster = () => {
 
   return (
     <section className="py-4 w-full">
-      <div className="h-56 w-full">
+      <div className="h-[23vh] w-full max-[600px]:h-[13vh] max-[800px]:h-[17vh]">
         <div className="relative h-full rounded-lg overflow-hidden">
           <div className="absolute inset-0 rounded-lg">
-            <div className="relative w-full h-full rounded-lg">
-              <div className="absolute left-0 top-0 w-1/10 h-full overflow-hidden z-0 rounded-lg">
-                <div className={`absolute inset-0 left-0 rounded-lg transition-all duration-500`}>
-                  <Image
+            <div className="grid grid-cols-10 gap-4 relative w-full h-full rounded-lg">
+              <div className="col-span-2 h-full overflow-hidden z-0 rounded-lg relative">
+                <Image
                     src={slides[getPrevIndex(currentIndex)].image}
                     fill
-                    className="object-cover object-left"
+                    className="object-cover object-right rounded-lg"
                     alt="Previous slide"
-                    sizes="25vw"
+                    sizes="20vw"
                   />
-                  <div className="absolute inset-0 rounded-lg" />
-                </div>
-              </div>
-              <div className="absolute right-0 top-0 rounded-lg w-1/10 h-full z-0">
-                <div className={`absolute inset-0 rounded-lg transition-all duration-500`}>
-                  <Image
-                    src={slides[getNextIndex(currentIndex)].image}
-                    fill
-                    className="object-cover object-left rounded-lg"
-                    alt="Next slide"
-                    sizes="25vw"
-                  />
-                  <div className="absolute inset-0 rounded-lg" />
-                </div>
+                  <button
+                    onClick={handlePrevious}
+                    className="relative left-0 top-0 w-full h-full z-30 p-3 bg-black/0 "
+                    aria-label="Previous slide"
+                  ></button>
               </div>
 
-              <div className="absolute left-50 rounded-lg top-0 w-365 h-full z-10">
-                <div className={`absolute inset-0 rounded-lg transition-opacity duration-500`}>
+              <div className="col-span-6 h-full z-10 relative rounded-lg overflow-hidden">
+                <div className="absolute inset-0 rounded-lg transition-opacity duration-500">
                   <Image
                     src={slides[currentIndex].image}
                     fill
                     className="object-fill rounded-lg"
                     alt="Current slide"
                     priority
-                    sizes="50vw"
                   />
-                  <div className="absolute inset-0 rounded-lg" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-transparent rounded-lg" />
                 </div>
+              </div>
+              <div className="col-span-2 h-full overflow-hidden z-0 rounded-lg relative">
+                <Image
+                  src={slides[getNextIndex(currentIndex)].image}
+                  fill
+                  className="object-cover object-left rounded-lg"
+                  alt="Next slide"
+                  sizes="20vw"
+                />
+                <button
+                  onClick={handleNext}
+                  className="relative right-0 top-0 w-full h-full z-30 p-3 bg-black/0 "
+                  aria-label="Next slide"
+                ></button>
               </div>
             </div>
           </div>
-          <div className="relative z-20 h-full top-8 right-140 flex flex-col justify-end md:p-10 lg:p-16 ">
-            <div className="max-w-2xl mx-auto">
-              <Button 
-                size="lg" 
-                className="bg-white text-black hover:bg-white/90 font-semibold py-6 text-base md:text-lg transition-all duration-300"
-                onClick={() => window.location.href = slides[currentIndex].buttonLink}
-              >
-                {slides[currentIndex].buttonText}
-              </Button>
-            </div>
-          </div>
-
-          <button
-            onClick={handlePrevious}
-            className="absolute left-4 top-0 w-50 h-60 z-30 p-3 bg-black/0 "
-            aria-label="Previous slide"
-          >
-          </button>
-          
-          <button
-            onClick={handleNext}
-            className="absolute right-4 top-0 w-50 h-60 z-30 p-3 bg-black/0 "
-            aria-label="Next slide"
-          >
-          </button>
         </div>
       </div>
     </section>
