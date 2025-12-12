@@ -90,7 +90,7 @@ export const CategoryMenu = () => {
                   <div className="flex justify-center absolute inset-0 brightness-75 group-hover:brightness-50">
                     {category.image_url ? (
                       <img
-                        src={transformImageUrl(category.image_url)}
+                        src={"https://app.tablecrm.com/api/v1/" + category.image_url}
                         className="w-full object-cover"
                         alt={category.name}
                         onError={(e) => {

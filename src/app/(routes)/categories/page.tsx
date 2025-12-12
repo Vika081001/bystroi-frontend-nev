@@ -131,9 +131,9 @@ const CategoriesPage = () => {
                       <div className="flex items-center gap-3">
                         {category.image_url ? (
                           <img
-                            src={transformImageUrl(category.image_url)}
+                            src={"https://app.tablecrm.com/api/v1/" + category.image_url}
                             alt={category.name}
-                            className="h-8 w-8 object-cover rounded"
+                            className="h-8 w-8 object-fill rounded"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = "/category-placeholder.png";
                             }}
