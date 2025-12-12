@@ -33,28 +33,11 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (config.baseURL && config.baseURL.startsWith('http://')) {
     config.baseURL = config.baseURL.replace('http://', 'https://');
   }
+  
   const phone = getAuthPhone();
 
   if (!phone) {
     return config;
-  }
-
-  const fieldName = config.phoneField || "utm_phone";
-
-  if (config.method === "get" || config.method === "delete") {
-    config.params = {
-      ...config.params,
-      [fieldName]: phone,
-    };
-  } else {
-    if (config.data instanceof FormData) {
-      config.data.append(fieldName, phone);
-    } else {
-      config.data = {
-        ...config.data,
-        [fieldName]: phone,
-      };
-    }
   }
 
   return config;
@@ -66,7 +49,8 @@ apiClient.interceptors.response.use(
     console.error("API Error:", error.response?.data || error.message);
     if (error.config) {
       console.error("Request URL:", error.config.url);
-      console.error("Base URL:", error.config.baseURL);
+      console.error("Request Params:", error.config.params);
+      console.error("Request Body:", error.config.data);
     }
     return Promise.reject(error);
   },

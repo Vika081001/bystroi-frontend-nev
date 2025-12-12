@@ -340,8 +340,8 @@ export default function CategoriesAdminPage() {
 
       {}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 h-full">
+          <div className="bg-white rounded-lg shadow-xl max-w-230 max-h-[90vh]">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Создание новой категории</h2>
@@ -366,8 +366,8 @@ export default function CategoriesAdminPage() {
 
       {}
       {showEditModal && selectedCategory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 h-full">
+          <div className="bg-white rounded-lg shadow-xl w-250 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Редактирование категории</h2>
@@ -401,24 +401,9 @@ export default function CategoriesAdminPage() {
 
       {}
       {showImageUploadModal && categoryForImageUpload && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 h-full">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h2 className="text-xl font-bold">Загрузка изображения</h2>
-                  <p className="text-sm text-gray-500">Категория: {categoryForImageUpload.name}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowImageUploadModal(false);
-                    setCategoryForImageUpload(null);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
               <ImageUploadModal
                 categoryId={categoryForImageUpload.id}
                 categoryName={categoryForImageUpload.name}
@@ -435,7 +420,7 @@ export default function CategoriesAdminPage() {
 
       {}
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="p-6">
               <div className="flex items-center gap-2 mb-4">

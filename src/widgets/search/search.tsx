@@ -125,8 +125,8 @@ export const SearchBar = () => {
       </form>
 
       {showSuggestions && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 shadow-xl rounded-lg overflow-hidden">
-          <div className="bg-white border border-gray-200">
+        <div className="absolute left-[-5rem] mt-1 z-50 w-2xl shadow-xl rounded-lg overflow-hidden">
+          <div className="bg-white rounded-md w-2xl shadow-lg ring ring-gray-100">
             <SearchSuggestions
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}

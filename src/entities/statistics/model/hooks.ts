@@ -1,9 +1,9 @@
 // entities/statistics/model/hooks.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import * as statsApi from "../api";
 import { GetViewEventsParams, SellerStatistics } from "./types";
 import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
+import { useUtmParams } from "@/shared/hooks/useUtmParams";
 
 export const statisticsKeys = {
   root: ["statistics"] as const,
@@ -16,6 +16,7 @@ export const statisticsKeys = {
 export const useCreateViewEvent = () => {
   const contragentPhone = useContragentPhone();
   const queryClient = useQueryClient();
+  const { utmParams } = useUtmParams();
 
   return useMutation({
     mutationFn: (data: {
@@ -28,6 +29,7 @@ export const useCreateViewEvent = () => {
       statsApi.createViewEvent({
         ...data,
         contragent_phone: contragentPhone,
+        ...utmParams,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: statisticsKeys.root });

@@ -10,9 +10,24 @@ export const createViewEvent = async (data: {
   listing_page?: number;
   event: 'view' | 'click';
   contragent_phone: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_name?: string;
+  utm_phone?: string;
+  utm_email?: string;
+  utm_leadid?: string;
+  utm_yclientid?: string;
+  utm_gaclientid?: string;
 }) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/events/view`, data);
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined)
+    );
+    
+    
+    const response = await axios.post(`${API_BASE_URL}/events/view`, cleanedData);
     return response.data;
   } catch (error) {
     console.error("Error creating view event:", error);

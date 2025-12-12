@@ -15,7 +15,7 @@ import {
 interface BreadcrumbsDemoProps {
   isProduct?: boolean;
   productName?: string;
-  categoryName?: string | null;
+  categoryName?: string;
 }
 
 export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
@@ -74,38 +74,18 @@ export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
-          
-          {categoryName && findCategoryPathByName.length > 0 ? (
-            findCategoryPathByName.map((category, index) => {
-              const isLast = index === findCategoryPathByName.length - 1;
-              
-              return (
-                <React.Fragment key={category.id}>
-                  {index > 0 && <BreadcrumbSeparator />}
-                  <BreadcrumbItem>
-                    {isLast ? (
-                      <BreadcrumbPage>{category.name}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link href={getCategoryUrl(category)}>
-                          {category.name}
-                        </Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                </React.Fragment>
-              );
-            })
-          ) : (
-            <>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href="/categories">Категории</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-            </>
-          )}
+
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/categories">Категории</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            
+          <BreadcrumbPage>{categoryName}</BreadcrumbPage>
+            
+          </BreadcrumbItem>
           
           <BreadcrumbSeparator />
           <BreadcrumbItem>

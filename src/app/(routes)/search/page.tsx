@@ -421,7 +421,7 @@ function SearchPageContent() {
                   : "Найдите товары по названию, категории или производителю"}
               </p>
               {query && (
-                <Button onClick={handleClearFilters} variant="outline">
+                <Button onClick={handleClearFilters} variant="outline" className="cursor-pointer">
                   Сбросить фильтры
                 </Button>
               )}

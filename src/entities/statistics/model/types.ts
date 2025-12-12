@@ -1,5 +1,7 @@
 // entities/statistics/model/types.ts
-export interface ViewEvent {
+import { UtmParams } from "@/shared/types/utm";
+
+export interface ViewEvent extends UtmParams {
   entity_type: 'nomenclature';
   entity_id: number;
   listing_pos?: number;
@@ -23,7 +25,7 @@ export interface GetViewEventsParams {
   event?: 'view' | 'click';
 }
 
-export interface ViewEventInfo {
+export interface ViewEventInfo extends UtmParams {
   entity_id: number;
   entity_type: string;
   event: string;

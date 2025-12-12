@@ -156,7 +156,7 @@ export const ProductImages = ({ images }: Props) => {
           >
             <Image
               src={transformedImages?.[currentImageIndex] || "https://picsum.photos/800/600"}
-              className="object-fill w-full h-full group-hover:scale-105 transition-transform duration-300"
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
               alt="Product Image"
               fill={true}
               priority
@@ -181,13 +181,13 @@ export const ProductImages = ({ images }: Props) => {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div 
-            className="relative w-full max-w-4xl h-full max-h-[80vh] flex items-center justify-center"
+          <div
+            className=" w-full h-full max-h-[80vh] flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <Button
               onClick={closeModal}
-              className="absolute top-4 right-4 z-50 size-10 cursor-pointer rounded-full bg-black/50 hover:bg-black/70 border-none text-white transition-all hover:scale-110"
+              className="absolute top-4 right-4 z-50 size-10 cursor-pointer bg-black/50 hover:bg-black/70 border-none text-white transition-all hover:scale-110"
               variant="outline"
               aria-label="Закрыть"
             >
@@ -195,27 +195,47 @@ export const ProductImages = ({ images }: Props) => {
             </Button>
 
             {hasMultipleImages && (
-              <Button
+              <div>
+                <Button
                 onClick={prevImage}
-                className="absolute left-4 top-1/2 transform cursor-pointer -translate-y-1/2 z-50 size-10 rounded-full bg-black/50 hover:bg-black/70 border-none text-white transition-all hover:scale-110"
+                className="absolute left-4 top-1/2 transform cursor-pointer -translate-y-1/2 z-50 size-10 bg-black/50 hover:bg-black/70 border-none text-white transition-all hover:scale-110"
                 variant="outline"
                 aria-label="Предыдущее изображение"
                 disabled={isTransitioning}
-              >
-                <ChevronLeft size={24} />
-              </Button>
+                >
+                  <ChevronLeft size={24} />
+                </Button>
+                <Button
+                onClick={prevImage}
+                className="absolute left-4 min-h-[100vh] min-w-[30vw] top-1/2 transform cursor-pointer -translate-y-1/2 z-50 size-10 bg-black/0 hover:bg-black/0 border-none transition-all"
+                variant="outline"
+                aria-label="Предыдущее изображение"
+                disabled={isTransitioning}
+                >
+                </Button>
+              </div>
             )}
 
             {hasMultipleImages && (
-              <Button
+              <div> 
+                <Button
                 onClick={nextImage}
-                className="absolute right-4 top-1/2 transform cursor-pointer -translate-y-1/2 z-50 size-10 rounded-full bg-black/50 hover:bg-black/70 border-none text-white transition-all hover:scale-110"
+                className="absolute right-4 top-1/2 transform cursor-pointer -translate-y-1/2 z-50 size-10  bg-black/50 hover:bg-black/70 border-none text-white transition-all hover:scale-110"
                 variant="outline"
                 aria-label="Следующее изображение"
                 disabled={isTransitioning}
               >
                 <ChevronRight size={24} />
               </Button>
+              <Button
+                onClick={nextImage}
+                className="absolute right-4 min-h-[100vh] min-w-[30vw] top-1/2 transform cursor-pointer -translate-y-1/2 z-50  bg-black/0 hover:bg-black/0 border-none transition-all"
+                variant="outline"
+                aria-label="Следующее изображение"
+                disabled={isTransitioning}
+              >
+              </Button>
+              </div>
             )}
 
             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
@@ -241,7 +261,7 @@ export const ProductImages = ({ images }: Props) => {
                       src={img}
                       alt={`Product image ${index + 1}`}
                       fill
-                      className="object-fill"
+                      className="object-contain"
                       sizes="100vw"
                       priority={index === currentImageIndex}
                     />

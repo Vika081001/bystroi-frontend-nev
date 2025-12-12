@@ -326,33 +326,33 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
             </p>
             
             {isLoading ? (
-              <div className="pt-6 text-center">
+              <div className="pt-6 text-center mb-6">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p className="text-gray-500 mt-2">Загрузка отзывов...</p>
               </div>
             ) : allReviews.length === 0 ? (
-              <div className="pt-6 text-center text-gray-500">
+              <div className="pt-6 text-center text-gray-500 mb-6">
                 <Star className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg mb-2">Отзывов пока нет</p>
                 <p className="text-sm text-gray-400">Будьте первым, кто оставит отзыв!</p>
               </div>
             ) : (
               <>
-                <ul className="flex flex-col gap-4 pt-6">
+                <ul className="flex flex-col gap-4 pt-6 mb-6">
                   {displayedReviews
                     .filter(review => isReviewVisible(review.status as ReviewStatus))
                     .map((review, index) => (
                       <React.Fragment key={review.id}>
                         <li>
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center ">
                             <div className="flex items-center gap-2">
-                              <Avatar className="cursor-pointer">
+                              <Avatar>
                                 <AvatarFallback className="bg-blue-100 text-blue-600">
-                                  {reviewData.phone ? reviewData.phone.slice(-2) : '??'}
+                                  X
                                 </AvatarFallback>
                               </Avatar>
                               <p className="text-sm font-medium">
-                                {reviewData.phone ? `Пользователь •${reviewData.phone.slice(-4)}` : 'Анонимный пользователь'}
+                                Анонимный пользователь
                               </p>
                             </div>
                             <p className="text-sm text-gray-500">{formatDate(review.created_at)}</p>
@@ -411,7 +411,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 </ul>
 
                 {hasMoreReviews && (
-                  <div className="mt-6 text-center">
+                  <div className="mt-6 text-center mb-4">
                     <Button
                       variant="link"
                       className="p-0 text-blue-600 cursor-pointer"
@@ -435,7 +435,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
             )}
           </div>
 
-          <div className="pt-8 border-t border-gray-200">
+          <div className="pt-8 border-t border-gray-200 mb-3">
             <h3 className="font-medium text-lg mb-6">Оставить отзыв</h3>
             <form onSubmit={handleSubmitReview} className="space-y-6">
               {!contragentPhone && (
@@ -447,7 +447,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                       value={reviewData.name}
                       onChange={(e) => setReviewData({...reviewData, name: e.target.value})}
                       placeholder="Ваше имя"
-                      className="cursor-pointer"
                       disabled={createReviewMutation.isPending}
                     />
                   </div>
@@ -458,8 +457,8 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                       type="tel"
                       value={reviewData.phone}
                       onChange={(e) => setReviewData({...reviewData, phone: e.target.value})}
-                      placeholder="+7 999 123 45 67"
-                      className="cursor-pointer"
+                      placeholder="7 999 123 45 67"
+                      maxLength={11}
                       required={!contragentPhone}
                       disabled={createReviewMutation.isPending}
                     />
@@ -478,7 +477,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                       onClick={() => handleRatingSelect(star)}
                       disabled={createReviewMutation.isPending}
                     >
-                      {/* Ваша иконка звезды */}
                       <svg 
                         width="26" 
                         height="26" 
@@ -506,7 +504,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                   id="text"
                   value={reviewData.text}
                   onChange={(e) => setReviewData({...reviewData, text: e.target.value})}
-                  className="w-full min-h-[120px] p-3 border rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full min-h-[120px] p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   placeholder="Поделитесь вашим опытом использования товара..."
                   required
                   disabled={createReviewMutation.isPending}

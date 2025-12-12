@@ -9,13 +9,20 @@ import { ProductCard } from "@/entities/product/ui/product-card";
 import { ProductCardSkeleton } from "@/entities/product/ui/product-card-skeleton";
 import { fetchProduct } from "@/entities/product/api";
 import { Button } from "@/shared/ui/kit/button";
+import { LoginPopup } from "@/feature/auth";
+import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
+import { Info } from "lucide-react";
 
 const FavoritesPage = () => {
+  const contragentPhone = useContragentPhone();
   const [currentPage, setCurrentPage] = useState(1);
   const { data: favorites, isLoading: isFavoritesLoading } = useFavorites({ page: currentPage });
   const [productsData, setProductsData] = useState<Record<number, any>>({});
   const [loadingProducts, setLoadingProducts] = useState<Record<number, boolean>>({});
   const [allProductsLoaded, setAllProductsLoaded] = useState(false);
+  
+  const isAuthenticated = !!contragentPhone;
+  const [showLoginPopup, setShowLoginPopup] = useState(false);
 
   useEffect(() => {
     if (favorites?.result && favorites.result.length > 0 && !allProductsLoaded) {
@@ -63,20 +70,38 @@ const FavoritesPage = () => {
 
   const isLoading = isFavoritesLoading || !allProductsLoaded;
   const hasItems = favorites?.result && favorites.result.length > 0;
-  if (isLoading && !favorites) {
+
+  if (!isAuthenticated) {
     return (
       <div className="container py-8 min-h-185 flex flex-col">
         <div className="flex items-center justify-between mb-6 mt-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-gray-200 rounded-md animate-pulse" />
-            <div className="h-8 w-48 bg-gray-200 rounded-md animate-pulse" />
-          </div>
-          <div className="h-6 w-24 bg-gray-200 rounded-md animate-pulse" />
+          <h1 className="flex gap-2 tracking-tight text-blue-600 text-2xl font-medium">
+            <Heart className="h-6 w-6 text-red-500 fill-red-500" />
+            Избранное
+          </h1>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 flex-grow">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <ProductCardSkeleton key={i} />
-          ))}
+
+        <div className="flex-grow flex flex-col items-center justify-center text-center py-12 mb-30">
+          <div className="space-y-4">
+            <p className="text-gray-600 max-w-md">
+              Войдите в аккаунт, чтобы сохранять товары в избранное и возвращаться к ним позже
+            </p>
+            
+            <div className="flex gap-4 justify-between">
+              <Link href="/">
+                <Button variant="outline">
+                  Продолжить покупки
+                </Button>
+              </Link>
+              <LoginPopup 
+                trigger={
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    Войти в аккаунт
+                  </Button>
+                }
+              />
+            </div>
+          </div>
         </div>
       </div>
     );

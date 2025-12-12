@@ -1,3 +1,6 @@
+// shared/types/order.ts
+import { UtmParams } from "./utm";
+
 export interface CreateOrderDto {
   goods: Array<{
     nomenclature_id: number;
@@ -22,18 +25,8 @@ export interface CreateOrderDto {
   additional_data?: Array<Record<string, any>>;
 }
 
-export interface CreateOrderParams extends CreateOrderDto {
+export interface CreateOrderParams extends CreateOrderDto, UtmParams {
   entity_type?: "docs_sales" | "view_events" | "favorites";
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_content?: string;
-  utm_name?: string;
-  utm_phone?: string;
-  utm_email?: string;
-  utm_leadid?: string;
-  utm_yclientid?: string;
-  utm_gaclientid?: string;
 }
 
 export interface CreateOrderResponse {

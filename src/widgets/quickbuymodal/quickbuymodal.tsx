@@ -1,7 +1,7 @@
 "use client";
 
 import { LockIcon, Loader2, Minus, Plus } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 import { Button } from "@/shared/ui/kit/button";
 import { Input } from "@/shared/ui/kit/input";
@@ -14,6 +14,7 @@ import {
 } from "@/shared/ui/kit/dialog";
 import { Textarea } from "@/shared/ui/kit/textarea";
 import { Checkbox } from "@/shared/ui/kit/checkbox";
+import { useDataUser } from "@/shared/hooks/useDataUser";
 
 interface QuickBuyModalProps {
   productId: number;
@@ -46,6 +47,7 @@ const QuickBuyModal = ({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const userDataAuth = useDataUser();
 
   const handleDecreaseQuantity = () => {
     setFormData(prev => ({
@@ -69,6 +71,7 @@ const QuickBuyModal = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    localStorage.setItem("user_delivery_data", JSON.stringify(formData));
 
     setTimeout(() => {
       setIsLoading(false);
@@ -80,12 +83,52 @@ const QuickBuyModal = ({
       }, 3000);
     }, 1500);
   };
+  
+  useEffect(() => {
+    if(userDataAuth) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFormData(prev => ({
+        ...prev,
+        name: userDataAuth!.name,
+        phone: userDataAuth!.contragent_phone,
+        address: userDataAuth!.address || '',
+      }));
+      if(!userDataAuth.address) {
+        if (!formData.address) {
+          const adress = localStorage.getItem('user_delivery_data');
+          if (adress) {
+            const parsedData = JSON.parse(adress);
+            setFormData(prev => ({
+              ...prev,
+              address: parsedData!.address || '',
+            }));
+          }
+        }
+      }
+      localStorage.setItem("user_delivery_data", JSON.stringify(formData));
+    } else {
+      const savedData = localStorage.getItem('user_delivery_data');
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+         setFormData(prev => ({
+            ...prev,
+            name: parsedData!.name,
+            phone: parsedData!.contragent_phone,
+            address: parsedData!.address || '',
+          }));
+        } catch (error) {
+          console.error('Error parsing localStorage data:', error);
+        }
+      }
+    }
+  }, []);
 
   const totalPrice = productPrice * formData.quantity;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-170 overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Купить в 1 клик</DialogTitle>
         </DialogHeader>
@@ -121,7 +164,7 @@ const QuickBuyModal = ({
                       max="99"
                       value={formData.quantity}
                       onChange={handleInputChange}
-                      className="w-20 h-8 text-center cursor-pointer"
+                      className="w-20 h-8 text-center "
                       disabled={isLoading}
                     />
                     <Button
@@ -129,7 +172,7 @@ const QuickBuyModal = ({
                       variant="outline"
                       size="icon"
                       onClick={handleIncreaseQuantity}
-                      className="h-8 w-8 cursor-pointer"
+                      className="h-8 w-8 "
                       disabled={isLoading}
                     >
                       <Plus width={16} height={16} />
@@ -153,7 +196,6 @@ const QuickBuyModal = ({
                   value={formData.name}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className="cursor-pointer"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -166,7 +208,6 @@ const QuickBuyModal = ({
                   value={formData.phone}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className="cursor-pointer"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -179,7 +220,6 @@ const QuickBuyModal = ({
                   value={formData.address}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className="cursor-pointer"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -191,7 +231,6 @@ const QuickBuyModal = ({
                   value={formData.note}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className="cursor-pointer"
                 />
               </div>
               <div className="flex items-center space-x-2">

@@ -1,11 +1,9 @@
 // widget/filter.tsx
 "use client";
 
-import { Star } from "lucide-react";
-import React, { useState, useEffect, useMemo } from "react";
-
-import { useProductFilters } from "@/feature/products-filter/hooks/useProductFilters";
-
+import { Star, X } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/shared/ui/kit/button";
 import { Checkbox } from "@/shared/ui/kit/checkbox";
 import {
@@ -15,6 +13,7 @@ import {
 } from "@/shared/ui/kit/input-group";
 import { Separator } from "@/shared/ui/kit/separator";
 import { Slider } from "@/shared/ui/kit/slider";
+import { useDebouncedCallback } from "use-debounce";
 
 interface FilterProps {
   products?: any[];
@@ -22,175 +21,196 @@ interface FilterProps {
   initialMaxPrice?: number;
   categories?: string[];
   manufacturers?: string[];
-  onFiltersApplied?: (filters: any) => void;
 }
 
-export const Filter = ({ 
-  products = [], 
+export const Filter = ({
+  products = [],
   initialMinPrice = 0,
-  initialMaxPrice = 10000,
-  categories = [],
-  manufacturers = [],
-  onFiltersApplied
+  initialMaxPrice = 100000,
+  categories: externalCategories,
+  manufacturers: externalManufacturers,
 }: FilterProps) => {
-  const { currentParams, updateUrlWithFilters, resetFilters } = useProductFilters();
-  
-  const [priceRange, setPriceRange] = useState<[number, number]>([
-    currentParams.min_price || initialMinPrice,
-    currentParams.max_price || initialMaxPrice
-  ]);
-  const [ratingRange, setRatingRange] = useState<[number, number]>([
-    currentParams.rating_from || 0,
-    currentParams.rating_to || 5
-  ]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    currentParams.category ? currentParams.category.split(',') : []
-  );
-  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>(
-    currentParams.manufacturer ? currentParams.manufacturer.split(',') : []
-  );
-  const [inStock, setInStock] = useState<boolean>(currentParams.in_stock || false);
-  const [priceInitialized, setPriceInitialized] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const currentFilters = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    return {
+      min_price: params.has("min_price") ? Number(params.get("min_price")) : undefined,
+      max_price: params.has("max_price") ? Number(params.get("max_price")) : undefined,
+      rating_from: params.has("rating_from") ? Number(params.get("rating_from")) : undefined,
+      rating_to: params.has("rating_to") ? Number(params.get("rating_to")) : undefined,
+      category: params.get("category") || undefined,
+      manufacturer: params.get("manufacturer") || undefined,
+      in_stock: params.get("in_stock") === "true",
+    };
+  }, [searchParams]);
 
   const { minProductPrice, maxProductPrice } = useMemo(() => {
-    if (!products || products.length === 0) {
-      return { minProductPrice: initialMinPrice, maxProductPrice: initialMaxPrice };
-    }
-    
-    const prices = products
-      .filter(p => p.price != null)
-      .map(p => p.price);
-    
-    if (prices.length === 0) {
-      return { minProductPrice: initialMinPrice, maxProductPrice: initialMaxPrice };
-    }
-    
+    if (!products.length) return { minProductPrice: initialMinPrice, maxProductPrice: initialMaxPrice };
+
+    const prices = products.filter(p => p.price != null && p.price > 0).map(p => p.price);
+    if (!prices.length) return { minProductPrice: initialMinPrice, maxProductPrice: initialMaxPrice };
+
     return {
       minProductPrice: Math.min(...prices),
-      maxProductPrice: Math.max(...prices)
+      maxProductPrice: Math.max(...prices),
     };
   }, [products, initialMinPrice, initialMaxPrice]);
 
-  const uniqueCategories = useMemo(() => {
-    if (categories && categories.length > 0) {
-      return categories;
-    }
-    
-    const cats = products
-      .filter(p => p.category_name)
-      .map(p => p.category_name);
-    return Array.from(new Set(cats));
-  }, [products, categories]);
-
-  const uniqueManufacturers = useMemo(() => {
-    if (manufacturers && manufacturers.length > 0) {
-      return manufacturers;
-    }
-    
-    const mans = products
-      .filter(p => p.manufacturer_name)
-      .map(p => p.manufacturer_name);
-    return Array.from(new Set(mans));
-  }, [products, manufacturers]);
+  const [localPriceRange, setLocalPriceRange] = useState<[number, number]>([minProductPrice, maxProductPrice]);
+  const [localRatingRange, setLocalRatingRange] = useState<[number, number]>([0, 5]);
 
   useEffect(() => {
-    if (!priceInitialized && products.length > 0 && maxProductPrice > initialMinPrice) {
-      if (currentParams.min_price !== undefined || currentParams.max_price !== undefined) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPriceRange([
-          currentParams.min_price || minProductPrice,
-          currentParams.max_price || maxProductPrice
-        ]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalPriceRange([
+      currentFilters.min_price ?? minProductPrice,
+      currentFilters.max_price ?? maxProductPrice,
+    ]);
+    
+    setLocalRatingRange([
+      currentFilters.rating_from ?? 0,
+      currentFilters.rating_to ?? 5,
+    ]);
+  }, [currentFilters, minProductPrice, maxProductPrice]);
+
+  const selectedCategories = useMemo(
+    () => (currentFilters.category ? currentFilters.category.split(",") : []),
+    [currentFilters.category]
+  );
+
+  const selectedManufacturers = useMemo(
+    () => (currentFilters.manufacturer ? currentFilters.manufacturer.split(",") : []),
+    [currentFilters.manufacturer]
+  );
+
+  const uniqueCategories = useMemo(() => {
+    if (externalCategories && externalCategories.length > 0) return externalCategories;
+    const cats = products.map(p => p.category_name || p.category).filter(Boolean);
+    return Array.from(new Set(cats));
+  }, [products, externalCategories]);
+
+  const uniqueManufacturers = useMemo(() => {
+    if (externalManufacturers && externalManufacturers.length > 0) return externalManufacturers;
+    const mans = products.map(p => p.manufacturer_name || p.manufacturer).filter(Boolean);
+    return Array.from(new Set(mans));
+  }, [products, externalManufacturers]);
+
+  const updateUrl = useDebouncedCallback((newParams: Record<string, string | number | boolean | undefined>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    params.delete('page');
+
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value === undefined || value === "" || value === false || (Array.isArray(value) && value.length === 0)) {
+        params.delete(key);
+      } else if (value === true) {
+        params.set(key, "true");
       } else {
-        setPriceRange([minProductPrice, maxProductPrice]);
+        params.set(key, String(value));
       }
-      setPriceInitialized(true);
-    }
-  }, [products, minProductPrice, maxProductPrice, currentParams, priceInitialized, initialMinPrice]);
+    });
 
-  const applyFilters = () => {
-    const filters = {
-      min_price: priceRange[0],
-      max_price: priceRange[1],
-      rating_from: ratingRange[0],
-      rating_to: ratingRange[1],
-      category: selectedCategories.length > 0 ? selectedCategories.join(',') : undefined,
-      manufacturer: selectedManufacturers.length > 0 ? selectedManufacturers.join(',') : undefined,
-      in_stock: inStock ? true : undefined
-    };
-
-    updateUrlWithFilters(filters);
-
-    if (onFiltersApplied) {
-      onFiltersApplied(filters);
-    }
-  };
-
-  const handleCategoryChange = (category: string, checked: boolean) => {
-    setSelectedCategories(prev => 
-      checked 
-        ? [...prev, category]
-        : prev.filter(c => c !== category)
-    );
-  };
-
-  const handleManufacturerChange = (manufacturer: string, checked: boolean) => {
-    setSelectedManufacturers(prev => 
-      checked 
-        ? [...prev, manufacturer]
-        : prev.filter(m => m !== manufacturer)
-    );
-  };
+    router.push(`/products?${params.toString()}`, { scroll: false });
+  }, 300);
 
   const handlePriceChange = (value: number[]) => {
     const [min, max] = value;
-    if (min >= max) return;
-    setPriceRange([min, max]);
+    setLocalPriceRange([min, max]);
+    updateUrl({ 
+      min_price: min === minProductPrice ? undefined : min, 
+      max_price: max === maxProductPrice ? undefined : max 
+    });
+  };
+
+  const handlePriceInputBlur = () => {
+    updateUrl({ 
+      min_price: localPriceRange[0] === minProductPrice ? undefined : localPriceRange[0], 
+      max_price: localPriceRange[1] === maxProductPrice ? undefined : localPriceRange[1] 
+    });
   };
 
   const handleRatingChange = (value: number[]) => {
-    const [min, max] = value;
-    if (min >= max) return;
-    setRatingRange([min, max]);
+    const [from, to] = value;
+    setLocalRatingRange([from, to]);
+    updateUrl({
+      rating_from: from === 0 ? undefined : from,
+      rating_to: to === 5 ? undefined : to,
+    });
+  };
+
+  const handleCategoryChange = (category: string, checked: boolean) => {
+    const newCats = checked
+      ? [...selectedCategories, category]
+      : selectedCategories.filter(c => c !== category);
+
+    updateUrl({ category: newCats.length > 0 ? newCats.join(",") : undefined });
+  };
+
+  const handleManufacturerChange = (manufacturer: string, checked: boolean) => {
+    const newMans = checked
+      ? [...selectedManufacturers, manufacturer]
+      : selectedManufacturers.filter(m => m !== manufacturer);
+
+    updateUrl({ manufacturer: newMans.length > 0 ? newMans.join(",") : undefined });
+  };
+
+  const handleInStockChange = (checked: boolean) => {
+    updateUrl({ in_stock: checked });
   };
 
   const handleResetFilters = () => {
-    resetFilters();
-    setSelectedCategories([]);
-    setSelectedManufacturers([]);
-    setInStock(false);
-    setPriceRange([minProductPrice, maxProductPrice]);
-    setRatingRange([0, 5]);
-    
-    if (onFiltersApplied) {
-      onFiltersApplied({});
+    const params = new URLSearchParams();
+    if (searchParams.has("sort")) {
+      params.set("sort", searchParams.get("sort")!);
     }
+    router.push(`/products?${params.toString()}`, { scroll: false });
   };
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (currentFilters.min_price !== undefined || currentFilters.max_price !== undefined) count++;
+    if (currentFilters.rating_from !== undefined || currentFilters.rating_to !== undefined) count++;
+    if (currentFilters.category) count++;
+    if (currentFilters.manufacturer) count++;
+    if (currentFilters.in_stock) count++;
+    return count;
+  }, [currentFilters]);
 
   return (
     <aside className="md:max-w-2xs w-full md:border border-gray-200 rounded-md md:p-4 h-fit">
       <div className="flex justify-between items-center">
-        <p className="font-medium pb-4 pl-4 md:p-0 leading-4">Фильтр</p>
+        <div className="flex items-center gap-2">
+          <p className="font-medium pb-4 pl-4 md:p-0 leading-4">Фильтр</p>
+          {activeFiltersCount > 0 && (
+            <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
+              {activeFiltersCount}
+            </span>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleResetFilters}
           className="text-blue-600 hover:text-blue-700"
+          disabled={activeFiltersCount === 0}
         >
           Сбросить все
         </Button>
       </div>
+
       <div className="h-[80dvh] overflow-y-auto md:overflow-y-visible px-4 md:p-0 md:h-auto">
         <div className="text-sm flex flex-col gap-4 pt-4">
           <div>
             <p className="font-medium">Рейтинг</p>
             <Slider
               className="pt-3"
-              value={ratingRange}
+              value={localRatingRange}
               onValueChange={handleRatingChange}
               min={0}
               max={5}
-              step={1}
+              step={0.5}
             />
             <ul className="flex justify-between pt-3">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -201,27 +221,42 @@ export const Filter = ({
               ))}
             </ul>
             <div className="flex gap-2 mt-2 text-xs">
-              <span>От: {ratingRange[0]}</span>
-              <span>До: {ratingRange[1]}</span>
+              <span>От: {localRatingRange[0].toFixed(1)}</span>
+              <span>До: {localRatingRange[1].toFixed(1)}</span>
             </div>
           </div>
+
           <Separator />
 
           <div>
-            <p className="font-medium">Цена</p>
+            <div className="flex justify-between items-center">
+              <p className="font-medium">Цена</p>
+              {currentFilters.min_price !== undefined || currentFilters.max_price !== undefined ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateUrl({ min_price: undefined, max_price: undefined })}
+                  className="h-6 px-2 text-xs"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Сбросить
+                </Button>
+              ) : null}
+            </div>
             <div className="flex flex-col gap-2 pt-2">
               <InputGroup className="bg-gray-50">
                 <InputGroupAddon>От</InputGroupAddon>
                 <InputGroupInput
                   className="h-7"
                   type="number"
-                  min={minProductPrice}
-                  max={maxProductPrice}
-                  value={priceRange[0]}
+                  value={localPriceRange[0]}
                   onChange={(e) => {
-                    const value = Math.max(minProductPrice, Math.min(Number(e.target.value), priceRange[1] - 1));
-                    setPriceRange([value, priceRange[1]]);
+                    const val = Number(e.target.value);
+                    if (!isNaN(val)) {
+                      setLocalPriceRange([Math.max(val, minProductPrice), localPriceRange[1]]);
+                    }
                   }}
+                  onBlur={handlePriceInputBlur}
                 />
               </InputGroup>
               <InputGroup className="bg-gray-50">
@@ -229,43 +264,49 @@ export const Filter = ({
                 <InputGroupInput
                   className="h-7"
                   type="number"
-                  min={minProductPrice}
-                  max={maxProductPrice}
-                  value={priceRange[1]}
+                  value={localPriceRange[1]}
                   onChange={(e) => {
-                    const value = Math.min(maxProductPrice, Math.max(Number(e.target.value), priceRange[0] + 1));
-                    setPriceRange([priceRange[0], value]);
+                    const val = Number(e.target.value);
+                    if (!isNaN(val)) {
+                      setLocalPriceRange([localPriceRange[0], Math.min(val, maxProductPrice)]);
+                    }
                   }}
+                  onBlur={handlePriceInputBlur}
                 />
               </InputGroup>
             </div>
             <Slider
               className="pt-3"
-              value={priceRange}
+              value={localPriceRange}
               onValueChange={handlePriceChange}
               min={minProductPrice}
               max={maxProductPrice}
               step={100}
             />
             <div className="text-xs text-gray-500 mt-1">
-              Диапазон: {minProductPrice}₽ - {maxProductPrice}₽
+              Диапазон: {minProductPrice.toLocaleString('ru-RU')}₽ - {maxProductPrice.toLocaleString('ru-RU')}₽
             </div>
           </div>
+
           <Separator />
 
           {uniqueCategories.length > 0 && (
             <>
               <div>
-                <p className="font-medium">Категории ({uniqueCategories.length})</p>
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">Категории ({uniqueCategories.length})</p>
+                </div>
                 <div className="flex flex-col gap-2 pt-2 max-h-40 overflow-y-auto">
                   {uniqueCategories.map((category) => (
-                    <label key={category} htmlFor={`category-${category}`} className="flex items-center gap-2">
+                    <label key={category} className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded">
                       <Checkbox
-                        id={`category-${category}`}
                         checked={selectedCategories.includes(category)}
                         onCheckedChange={(checked) => handleCategoryChange(category, !!checked)}
                       />
                       <span className="truncate">{category}</span>
+                      <span className="ml-auto text-xs text-gray-500">
+                        {products.filter(p => (p.category_name || p.category) === category).length}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -277,16 +318,20 @@ export const Filter = ({
           {uniqueManufacturers.length > 0 && (
             <>
               <div>
-                <p className="font-medium">Производители ({uniqueManufacturers.length})</p>
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">Производители ({uniqueManufacturers.length})</p>
+                </div>
                 <div className="flex flex-col gap-2 pt-2 max-h-40 overflow-y-auto">
                   {uniqueManufacturers.map((manufacturer) => (
-                    <label key={manufacturer} htmlFor={`manufacturer-${manufacturer}`} className="flex items-center gap-2">
+                    <label key={manufacturer} className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded">
                       <Checkbox
-                        id={`manufacturer-${manufacturer}`}
                         checked={selectedManufacturers.includes(manufacturer)}
                         onCheckedChange={(checked) => handleManufacturerChange(manufacturer, !!checked)}
                       />
                       <span className="truncate">{manufacturer}</span>
+                      <span className="ml-auto text-xs text-gray-500">
+                        {products.filter(p => (p.manufacturer_name || p.manufacturer) === manufacturer).length}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -296,27 +341,23 @@ export const Filter = ({
           )}
 
           <div>
-            <p className="font-medium">Наличие</p>
+            <div className="flex justify-between items-center">
+              <p className="font-medium">Наличие</p>
+            </div>
             <div className="flex flex-col gap-2 pt-2">
-              <label htmlFor="in-stock" className="flex items-center gap-2">
+              <label className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded">
                 <Checkbox
-                  id="in-stock"
-                  checked={inStock}
-                  onCheckedChange={(checked) => setInStock(!!checked)}
+                  checked={currentFilters.in_stock}
+                  onCheckedChange={handleInStockChange}
                 />
                 Только в наличии
+                <span className="ml-auto text-xs text-gray-500">
+                  {products.filter(p => p.in_stock).length} из {products.length}
+                </span>
               </label>
             </div>
           </div>
         </div>
-      </div>
-      <div className="p-4 w-full">
-        <Button 
-          className="w-full bg-blue-600 hover:bg-blue-700"
-          onClick={applyFilters}
-        >
-          Применить фильтры
-        </Button>
       </div>
     </aside>
   );

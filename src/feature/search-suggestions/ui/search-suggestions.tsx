@@ -225,7 +225,7 @@ export const SearchSuggestions = ({
   };
 
   return (
-    <div className="bg-white rounded-lg w-full max-w-2xl shadow-lg">
+    <div className="bg-white rounded-lg w-full max-w-3xl shadow-lg">
       {searchQuery && (
         <>
           <div className="p-4 border-b">
@@ -353,11 +353,16 @@ export const SearchSuggestions = ({
       )}
 
       {!searchQuery && (
-        <div className="p-4 w-full h-80">
+        <div className="p-4 w-full">
           <p className="font-medium tracking-tight">Популярные товары</p>
-          <div className="grid grid-cols-3 gap-2 pt-4">
+          <div className="grid grid-cols-6 gap-2 pt-4">
             {loadingPopular ? (
-              <div className="col-span-3 flex items-center justify-center py-8 h-55">
+              <div className="col-span-6 gap-2 flex justify-between py-12 mx-10">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
               </div>
             ) : popularProducts.length > 0 ? (
@@ -402,7 +407,7 @@ export const SearchSuggestions = ({
           <Separator />
           <div className="p-4">
             <p className="font-medium tracking-tight">Недавно просмотренные</p>
-            <div className="grid grid-cols-3 gap-2 pt-4">
+            <div className="grid grid-cols-6 gap-2 pt-4">
               {recentlyViewed.slice(0, 6).map((product) => (
                 <Link
                   key={product.id}

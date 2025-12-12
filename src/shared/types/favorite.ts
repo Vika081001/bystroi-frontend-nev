@@ -1,4 +1,6 @@
+// shared/types/favorite.ts
 import { ListParams } from "./api";
+import { UtmParams } from "./utm";
 
 export type Favorite = {
   id: number;
@@ -17,7 +19,7 @@ export interface DeleteFavorite {
   phone: string;
 }
 
-export interface AddToFavoriteDto {
+export interface AddToFavoriteDto extends UtmParams {
   nomenclature_id: number;
   contragent_phone: string;
 }

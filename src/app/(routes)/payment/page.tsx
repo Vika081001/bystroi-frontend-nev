@@ -15,6 +15,8 @@ import { Label } from "@/shared/ui/kit/label";
 import { Separator } from "@/shared/ui/kit/separator";
 import { Textarea } from "@/shared/ui/kit/textarea";
 import { Skeleton } from "@/shared/ui/kit/skeleton";
+import { useDataUser } from "@/shared/hooks/useDataUser";
+import { Suspense } from "react";
 
 interface UserData {
   name: string;
@@ -49,8 +51,7 @@ interface OrderModalData {
   error?: string;
 }
 
-const PaymentPage = () => {
-  const router = useRouter();
+function PaymentContent() {
   const contragentPhone = useContragentPhone();
   const { data: cart, isLoading: isCartLoading, error: cartError } = useCart();
   const { 
@@ -80,6 +81,9 @@ const PaymentPage = () => {
     title: "",
     message: "",
   });
+  const userDataAuth = useDataUser();
+
+  
 
   const getAddressFromCoordinates = async (lat: number, lon: number): Promise<string> => {
     try {
@@ -133,7 +137,10 @@ const PaymentPage = () => {
           setFormData(prev => ({
             ...prev,
             address: address,
-          })); 
+          }));
+          if (userDataAuth) {
+            userDataAuth.address = address;
+          }
         } catch (error) {
           console.error("Ошибка при получении адреса:", error);
         }
@@ -165,86 +172,50 @@ const PaymentPage = () => {
   };
 
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        let userData: UserData | null = null;
+    let userData: UserData | null = null;
 
-        const savedData = localStorage.getItem('user_delivery_data');
-        if (savedData) {
-          try {
-            const parsedData = JSON.parse(savedData);
-            userData = {
-              name: parsedData.name || "",
-              phone: parsedData.phone || "",
-              address: parsedData.address || "",
-            };
-          } catch (error) {
-            console.error('Error parsing localStorage data:', error);
-          }
-        }
-
-        if (!userData && contragentPhone) {
-          userData = {
-            name: "",
-            phone: contragentPhone,
-            address: "",
-          };
-        }
-
-        if (!userData) {
-          userData = {
-            name: "",
-            phone: "",
-            address: "",
-          };
-        }
-        
-        setFormData(prev => ({
-          ...prev,
-          name: userData!.name,
-          phone: userData!.phone,
-          address: userData!.address || "",
-        }));
-        
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setIsInitialized(true);
+    if(userDataAuth) {
+      setFormData(prev => ({
+        ...prev,
+        name: userDataAuth!.name,
+        phone: userDataAuth!.contragent_phone,
+        address: userDataAuth!.address || '',
+      }));
+      if(!userDataAuth.address) {
+        userDataAuth.address = formData.address;
       }
-    };
+      
+    } else {
+      const savedData = localStorage.getItem('user_delivery_data');
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+          userData = {
+            name: parsedData.name || "",
+            phone: parsedData.phone || "",
+            address: parsedData.address || "",
+          };
+        } catch (error) {
+          console.error('Error parsing localStorage data:', error);
+        }
+      }
 
-    if (!isInitialized) {
-      loadUserData();
+      if (!userData) {
+        userData = {
+          name: "",
+          phone: "",
+          address: "",
+        };
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        name: userData!.name,
+        phone: userData!.phone,
+        address: userData!.address || "",
+      }));
     }
   }, [contragentPhone, isInitialized]);
-
-  useEffect(() => {
-    if (isInitialized) {
-      const isAuthenticated = async () => {
-        try {
-          const response = await fetch('/api/user/profile');
-          return response.ok;
-        } catch {
-          return false;
-        }
-      };
-
-      const saveToLocalStorage = async () => {
-        const authenticated = await isAuthenticated();
-        if (!authenticated && (formData.name || formData.phone || formData.address)) {
-          const userData: UserData = {
-            name: formData.name,
-            phone: formData.phone,
-            address: formData.address,
-          };
-          localStorage.setItem('user_delivery_data', JSON.stringify(userData));
-        }
-      };
-
-      const timeoutId = setTimeout(saveToLocalStorage, 1000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [formData.name, formData.phone, formData.address, isInitialized]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -257,6 +228,7 @@ const PaymentPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.setItem("user_delivery_data", JSON.stringify(formData));
     
     if (!cart || items.length === 0) {
       setOrderModal({
@@ -372,11 +344,9 @@ const PaymentPage = () => {
 
   return (
     <div className="py-4 md:py-8 min-w-200">
-      {/* Модальное окно */}
       {orderModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="relative w-full max-w-lg rounded-lg bg-white shadow-lg">
-            {/* Заголовок */}
             <div className={`p-6 ${orderModal.isSuccess ? 'bg-green-50' : 'bg-red-50'} rounded-t-lg`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -647,7 +617,7 @@ const PaymentPage = () => {
                     `Оформить заказ за ${totalPrice.toLocaleString("ru-RU")}₽`
                   )}
                 </Button>
-                <div className="flex justify-center items-center text-gray-500 gap-1">
+                <div className="flex justify-center items-center text-gray-400 gap-1">
                   <LockIcon width={16} height={16} />
                   <span className="text-sm text-center">
                     Ваши данные защищены
@@ -718,4 +688,10 @@ const PaymentPage = () => {
   );
 };
 
-export default PaymentPage;
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <PaymentContent />
+    </Suspense>
+  );
+}

@@ -1,3 +1,4 @@
+// shared/api/favorites.ts
 import { apiClient } from "./client";
 import { 
   FavoritesResponse, 
@@ -21,9 +22,32 @@ export const fetchFavorites = async (params: GetFavoritesParams): Promise<Favori
 };
 
 export const addToFavorites = async (data: AddToFavoriteDto): Promise<Favorite> => {
-  const response = await apiClient.post<Favorite>(ENTITY_URL, data, {
+  const {
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    utm_content,
+    utm_name,
+    utm_phone,
+    utm_email,
+    utm_leadid,
+    utm_yclientid,
+    utm_gaclientid,
+    ...body
+  } = data;
+
+  const response = await apiClient.post<Favorite>(ENTITY_URL, body, {
     params: {
-      entity_type: "favorites",
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_name,
+      utm_phone,
+      utm_email,
+      utm_leadid,
+      utm_yclientid,
+      utm_gaclientid,
     },
   });
   return response.data;

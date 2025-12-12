@@ -66,10 +66,6 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ onFiltersChange }) => {
     });
   }
 
-  if (activeFilters.length === 0) {
-    return null;
-  }
-
   const handleRemoveFilter = (filterKey: string, filterValue?: string) => {
     removeFilter(filterKey, filterValue);
     if (onFiltersChange) {
@@ -83,6 +79,10 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ onFiltersChange }) => {
       onFiltersChange();
     }
   };
+
+  if (activeFilters.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-gray-50 rounded-md">
@@ -104,15 +104,6 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ onFiltersChange }) => {
           </Button>
         </Badge>
       ))}
-      
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-blue-600 hover:text-blue-700"
-        onClick={handleResetAll}
-      >
-        Очистить все
-      </Button>
     </div>
   );
 };

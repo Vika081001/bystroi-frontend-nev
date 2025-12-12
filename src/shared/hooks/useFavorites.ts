@@ -1,6 +1,5 @@
+// shared/hooks/useFavorites.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { apiClient } from "@/shared/api/client";
 import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
 import { 
   fetchFavorites, 
@@ -9,9 +8,9 @@ import {
 } from "@/shared/api/favorites";
 import { 
   FavoritesResponse, 
-  GetFavoritesParams, 
-  AddToFavoriteDto 
+  GetFavoritesParams 
 } from "@/shared/types/favorite";
+import { useUtmParams } from "@/shared/hooks/useUtmParams";
 
 interface FavoritesParams {
   page?: number;
@@ -37,12 +36,14 @@ export const useFavorites = (params: FavoritesParams = {}) => {
 export const useAddToFavorites = () => {
   const queryClient = useQueryClient();
   const contragentPhone = useContragentPhone();
+  const { utmParams } = useUtmParams();
 
   return useMutation({
     mutationFn: async (nomenclature_id: number) => {
       return addToFavorites({
         nomenclature_id,
         contragent_phone: contragentPhone,
+        ...utmParams,
       });
     },
     onSuccess: () => {

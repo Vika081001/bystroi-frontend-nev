@@ -3,8 +3,10 @@
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/shared/lib/utils";
+import { toast } from "sonner";
 
 import { useAddToFavorites, useRemoveFromFavorites, useIsFavorite } from "@/shared/hooks/useFavorites";
+import { useDataUser } from "@/shared/hooks/useDataUser";
 
 interface FavoriteButtonProps {
   productId: number;
@@ -28,10 +30,16 @@ export const FavoriteButton = ({
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const dataUser = useDataUser();
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if(!dataUser) {
+      toast.error("Авторизируйтесь для добавления товара в избранное");
+      return;
+    }
     
     setIsPending(true);
     

@@ -56,7 +56,7 @@ export const uploadCategoryImage = async (
   formData.append("file", file);
 
   const response = await apiClient.post<string>(
-    `/mp/categories/${id}/upload_image/`,
+    `/categories/${id}/upload_image/`,
     formData,
     {
       headers: {

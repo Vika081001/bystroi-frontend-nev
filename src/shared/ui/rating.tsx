@@ -17,6 +17,7 @@ export const Rating = ({ rating, size }: Props) => {
           height={size}
           strokeWidth={1}
           stroke="gold"
+          className="inline"
           fill={index < Math.round(rating) ? "gold" : "transparent"}
         />
       ))}

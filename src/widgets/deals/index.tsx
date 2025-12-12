@@ -19,10 +19,6 @@ export const Deals = () => {
 
   const { data, isLoading } = useProducts(params);
 
-  if (!data?.result?.length) {
-    return null;
-  }
-
   return (
     <section className="py-8">
       <div className="container">

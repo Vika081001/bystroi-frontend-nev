@@ -11,6 +11,8 @@ import { transformImageUrl } from "@/shared/lib/image-utils";
 import { Product } from "../model/types";
 import { useTrackEvent } from "@/entities/statistics/model/hooks";
 import { Button } from "@/shared/ui/kit/button";
+import { useDataUser } from "@/shared/hooks/useDataUser";
+import { toast } from "sonner";
 
 type ProductCardProps = Product & {
   position?: number;
@@ -42,6 +44,7 @@ export const ProductCard = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hasTrackedView = useRef(false);
+  const dataUser = useDataUser();
 
   useEffect(() => {
     if (cartData?.goods) {
@@ -137,6 +140,11 @@ export const ProductCard = ({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if(!dataUser) {
+      toast.error("Авторизируйтесь для добавления товара в корзину");
+      return;
+    }
    
     if (!id) return;
    
@@ -226,8 +234,8 @@ export const ProductCard = ({
             <div className="flex items-center justify-between">
               <span className="font-medium text-lg text-white">{displayPrice}</span>
               {displayRating && (
-                <span className="text-xs font-medium text-white">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 inline" />
+                <span className="flex text-xs font-medium text-white justify-center items-center">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 inline mr-1" />
                   {rating?.toFixed(1)}
                 </span>
               )}
@@ -235,7 +243,7 @@ export const ProductCard = ({
            
             <div className="flex items-center justify-between pt-2">
               {localQuantity > 0 ? (
-                <div className="flex items-center justify-between w-full bg-white/90 rounded-md overflow-hidden">
+                <div className="flex items-center justify-between w-full bg-white/90 rounded-md overflow-hidden h-9">
                   <Button
                     onClick={handleDecrease}
                     className="flex-1 bg-transparent hover:bg-gray-100 text-gray-800 border-0 rounded-none cursor-pointer transition-colors duration-200"
@@ -277,7 +285,7 @@ export const ProductCard = ({
                     <ShoppingCart width={16} height={16} />
                   )}
                   <span className="ml-2">
-                    {isUpdating ? "..." : "В корзину"}
+                    {isUpdating ? "" : "В корзину"}
                   </span>
                 </Button>
               )}

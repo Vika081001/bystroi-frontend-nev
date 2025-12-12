@@ -7,7 +7,6 @@ import Link from "next/link";
 import { Product } from "@/entities/product";
 import { ProductImages } from "@/entities/product/ui/product-images";
 import { useReviews } from "@/shared/hooks/useReviews";
-import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
 
 import { BreadcrumbsDemo } from "@/shared/ui/breadcrumbs";
 import { Avatar, AvatarImage } from "@/shared/ui/kit/avatar";
@@ -45,7 +44,6 @@ const ProductInfo = ({
   ...product
 }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const contragentPhone = useContragentPhone();
   
   const { data: reviewsData, isLoading: reviewsLoading } = useReviews({
     entity_type: "nomenclature",
@@ -66,7 +64,7 @@ const ProductInfo = ({
   const shouldShowExpand = description_long && description_long.length > 200;
 
   const formatPrice = (price: number) => {
-    return `${price?.toLocaleString('ru-RU')}₽ / ${unit_name === null ? "шт." : unit_name}`;
+    return `${price?.toLocaleString('ru-RU')}₽/${unit_name === null ? "шт." : unit_name}`;
   };
 
   const getReviewWord = (count: number): string => {
@@ -101,12 +99,22 @@ const ProductInfo = ({
           <h1 className="text-xl font-medium tracking-tight">{name}</h1>
           
           <div className="flex pt-2 items-center gap-2">
-            <div className="flex items-center gap-0.5">
-              <Rating size={16} rating={avgRating ?? 0} />
-            </div>
-            <span className="text-xs text-gray-600">
-              {reviewsCount ?? 0} отзыва
-            </span>
+            {reviewsCount > 0 ? (
+              <div className="flex">
+                <div className="flex items-center gap-0.5 inline">
+                  <Rating size={16} rating={avgRating ?? 0} />
+                </div>
+                <span className="text-xs text-gray-600 ml-2">
+                  {reviewsCount + " " + getReviewWord(reviewsCount)}
+                </span>
+              </div>
+            ) : (
+              <div>
+                <span className="text-xs text-gray-600">
+                  Нет отзывов
+                </span>
+              </div>
+            )}
           </div>
           
           <div className="pt-2 flex items-center justify-between">
@@ -132,13 +140,13 @@ const ProductInfo = ({
                         >
                           <Badge
                             variant="outline"
-                            className={`transition-all duration-200 ${
+                            className={`transition-all duration-200 py-0.5 ${
                               item.id === id 
                                 ? 'border-blue-500 bg-blue-50 text-blue-500' 
                                 : 'border-gray-200'
                             }`}
                           >
-                            {item.name}
+                            <span className="px-1 py-0.5">{item.name}</span>
                           </Badge>
                         </Link>
                       ))}
@@ -166,11 +174,11 @@ const ProductInfo = ({
                   <span className="text-gray-500">Категория: </span>
                   <p>{category_name}</p>
                 </div>
+                <Separator className="w-full my-4" />
               </div>
+              
             )}
           </div>
-          
-          <Separator className="w-full my-4" />
         
           {seller_name && (
             <>

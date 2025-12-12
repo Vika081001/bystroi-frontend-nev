@@ -16,6 +16,7 @@ import {
 } from "@/shared/ui/kit/input-group";
 import { Separator } from "@/shared/ui/kit/separator";
 import { toast } from "sonner";
+import { useDataUser } from "@/shared/hooks/useDataUser";
 
 type Props = {
   productId: number;
@@ -44,6 +45,11 @@ export const AddToCart = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const addToCartMutation = useAddToCart();
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false);
+  const dataUser = useDataUser();
+
+  const formatPrice = (price: number) => {
+    return `${price?.toLocaleString('ru-RU')}₽/${unitName === null ? "шт." : unitName}`;
+  };
 
   const loadProductDetails = async () => {
     setIsLoadingProduct(true);
@@ -72,6 +78,10 @@ export const AddToCart = ({
   };
 
   const handleAddToCart = async () => {
+    if (!dataUser) {
+      setErrorMessage("Авторизуйтесь для добавления товара в корзину");
+      return;
+    }
     clearMessages();
     
     if (!productData) {
@@ -195,7 +205,7 @@ export const AddToCart = ({
       <Separator className="my-4" />
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">Всего:</p>
-        <span className="text-lg font-medium">{totalPrice.toLocaleString("ru-RU")}₽</span>
+        <span className="text-lg font-medium">{formatPrice(price)}</span>
       </div>
       <div className="pt-4 flex flex-col gap-2">
         <Button 

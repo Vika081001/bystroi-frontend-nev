@@ -6,6 +6,7 @@ import Footer from "@/widgets/footer";
 import { Header } from "@/widgets/header";
 
 import { Providers } from "./providers";
+import { ReduxProvider } from "./ReduxProvider";
 import "./styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,13 +24,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`bg-white text-gray-800 ${inter.className}`} >
       <body className="h-screen relative z-10">
-        
-        <Providers>
-          <Header />
-          <main>{children}</main>
-          <Footer />
-          <Toaster closeButton />
-        </Providers>
+        <ReduxProvider>
+          <Providers>
+            <Header />
+              <main>{children}</main>
+            <Footer />
+            <Toaster closeButton />
+          </Providers>
+        </ReduxProvider>
       </body>
     </html>
   );

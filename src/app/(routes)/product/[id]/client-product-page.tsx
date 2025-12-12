@@ -13,7 +13,7 @@ interface ClientProductPageProps {
     initialPrice: number;
     initialName: string;
     initialImages: string[];
-    quantity?: number; // Добавляем quantity
+    quantity?: number
   };
 }
 
