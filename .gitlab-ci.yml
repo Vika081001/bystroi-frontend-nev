@@ -4,80 +4,118 @@ stages:
 deploy_production:
   stage: deploy
   tags:
-    - universal
-  before_script:
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "$DEPLOY_SERVER_PRIVATE_KEY" > ~/.ssh/deploy_key
-    - chmod 600 ~/.ssh/deploy_key
-    - echo -e "Host $DEPLOY_HOST\n  HostName $DEPLOY_HOST\n  User $DEPLOY_USER\n  StrictHostKeyChecking no\n  IdentityFile ~/.ssh/deploy_key" > ~/.ssh/config
+    - shell
+  variables:
+    GIT_STRATEGY: none
+    GIT_SSH_URL: "git@git.tablecrm.com:tablecrm/bystroi.ru.git"
+
+    PRODUCTION_DIR: "/var/www/bystroi.ru/shopchik-master"
+    APP_NAME: "bystroi-app"
+    LOG_DIR: "/var/log/bystroi.ru"
+
+  # rules:
+  #   - if: '$CI_COMMIT_BRANCH == "main"'
+  #     when: manual
+
   script:
+    - set -e
     - |
-      ssh $DEPLOY_USER@$DEPLOY_HOST "
-        set -e
-        
-        cd /var/www/bystroi.ru/shopchik-master
-        
-        git fetch origin
-        git reset --hard origin/main
-        git clean -fdx
-        
-        echo 'установка pnpm если нет'
-        if ! command -v pnpm >/dev/null 2>&1; then
-          curl -fsSL https://get.pnpm.io/install.sh | sh -
-          export PNPM_HOME=\"\$HOME/.local/share/pnpm\"
-          export PATH=\"\$PNPM_HOME:\$PATH\"
-        fi
-        
-        echo 'установка зависимостей'
-        pnpm install --frozen-lockfile || pnpm install
-        
-        echo 'сборка проекта'
-        NODE_OPTIONS='--max-old-space-size=3072' pnpm build
-        
-        echo 'проверка сборки'
-        if [ ! -d '.next/standalone' ]; then
-          echo 'XXX Ошибка: standalone сборка не создалась'
-          echo 'Проверь next.config.ts - должно быть output: \"standalone\"'
-          exit 1
-        fi
-        
-        echo 'настройка PM2'
-        if ! command -v pm2 >/dev/null 2>&1; then
-          npm install -g pm2
-        fi
-        
-        echo 'настройка папки для логов'
-        sudo mkdir -p /var/log/bystroi/
-        sudo chown deploy:deploy /var/log/bystroi/
-        
-        echo 'перезапуск'
-        pm2 stop bystroi-app 2>/dev/null || true
-        sleep 2
-        
-        pm2 start .next/standalone/server.js \
-          --name bystroi-app \
-          --time \
-          --cwd /var/www/bystroi.ru/shopchik-master \
-          --log /var/log/bystroi/app.log \
-          --error /var/log/bystroi/error.log
-        
-        pm2 save 2>/dev/null || true
-        
-        echo 'проверка'
-        sleep 5
-        
-        if curl -s http://localhost:3000 >/dev/null; then
-          echo 'Сайт запущен: https://bystroi.ru'
-          pm2 status bystroi-app
-        else
-          echo '!!!  Проверь логи:'
-          tail -20 /var/log/bystroi/error.log 2>/dev/null || echo 'Логи не найдены'
-        fi
-      "
-  environment:
-    name: production
-    url: https://bystroi.ru
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
+      [ -f ~/.bashrc ] && source ~/.bashrc
+      [ -f ~/.profile ] && source ~/.profile
+
+    - echo "Переходим в $PRODUCTION_DIR"
+    - mkdir -p $PRODUCTION_DIR
+    - cd $PRODUCTION_DIR
+
+    - |
+      if [ ! -d ".git" ]; then
+        echo "Клонируем репозиторий..."
+        git clone $GIT_SSH_URL .
+      else
+        echo "Обновляем репозиторий..."
+        git fetch origin $CI_COMMIT_BRANCH
+        git reset --hard origin/$CI_COMMIT_BRANCH
+        git clean -fd
+      fi
+
+    - |
+      echo "--- Проверка Node.js ---"
+      export NVM_DIR="$HOME/.nvm"
+
+      if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+        echo "📥 Установка NVM..."
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+      fi
+
+      \. "$NVM_DIR/nvm.sh"
+
+      if ! command -v node >/dev/null 2>&1; then
+        echo "📥 Установка Node.js v22..."
+        # Сначала пробуем обновить список версий, если --lts не сработал
+        nvm install 22
+        nvm use 22
+        nvm alias default 22
+      fi
+
+      export PATH="$($HOME/.nvm/nvm.sh && nvm which current | xargs dirname):$PATH"
+      node -v
+
+    - |
+      if ! command -v pnpm >/dev/null 2>&1; then
+        echo "Установка pnpm..."
+        curl -fsSL https://get.pnpm.io/install.sh | sh -
+        export PNPM_HOME="$HOME/.local/share/pnpm"
+        export PATH="$PNPM_HOME:$PATH"
+      fi
+
+    - |
+      echo "--- Установка зависимостей ---"
+      export HUSKY=0
+      pnpm install --frozen-lockfile || pnpm install
+
+    - |
+      echo "--- Сборка проекта ---"
+      NODE_OPTIONS='--max-old-space-size=2048' pnpm build
+
+    - |
+      if [ ! -d ".next/standalone" ]; then
+        echo "Ошибка: standalone сборка не найдена!"
+        exit 1
+      fi
+      cp -r public .next/standalone/ || true
+      mkdir -p .next/standalone/.next
+      cp -r .next/static .next/standalone/.next/
+
+    - |
+      echo "--- Настройка PM2 ---"
+      if ! command -v pm2 >/dev/null 2>&1; then
+        npm install -g pm2
+      fi
+
+      if [ ! -w "$LOG_DIR" ]; then
+        echo "Ошибка: Нет прав на запись в $LOG_DIR. Выполнили Шаг 1 из инструкции?"
+        exit 1
+      fi
+
+      echo "--- Перезапуск приложения ---"
+      pm2 delete $APP_NAME 2>/dev/null || true
+
+      pm2 start .next/standalone/server.js \
+        --name $APP_NAME \
+        --time \
+        --log $LOG_DIR/app.log \
+        --error $LOG_DIR/error.log
+
+      pm2 save
+
+    - |
+      echo "--- Проверка запуска ---"
+      sleep 5
+      if curl -s http://localhost:3000 >/dev/null; then
+        echo "Сайт запущен. Логи в $LOG_DIR"
+        pm2 status $APP_NAME
+      else
+        echo "Ошибка запуска. Последние строки лога:"
+        tail -n 20 $LOG_DIR/error.log
+        exit 1
+      fi
