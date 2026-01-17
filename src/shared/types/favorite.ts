@@ -15,7 +15,7 @@ export interface GetFavoritesParams extends ListParams {
 }
 
 export interface DeleteFavorite {
-  nomenclature_id: number;
+  favorite_id: number;
   phone: string;
 }
 
