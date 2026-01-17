@@ -60,9 +60,9 @@ export const useRemoveFromFavorites = () => {
   const contragentPhone = useContragentPhone();
 
   return useMutation({
-    mutationFn: async (nomenclature_id: number) => {
+    mutationFn: async (favorite_id: number) => {
       return removeFromFavorites({
-        nomenclature_id,
+        favorite_id,
         phone: contragentPhone,
       });
     },

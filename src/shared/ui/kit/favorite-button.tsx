@@ -54,7 +54,7 @@ export const FavoriteButton = ({
     
     try {
       if (currentIsFavorite && favoriteId) {
-        await removeFromFavoritesMutation.mutateAsync(productId);
+        await removeFromFavoritesMutation.mutateAsync(favoriteId);
       } else {
         await addToFavoritesMutation.mutateAsync(productId);
       }
