@@ -12,7 +12,8 @@ import { ArrowLeft, ChevronRight, Grid3X3 } from "lucide-react";
 import { BreadcrumbsDemo } from "@/shared/ui/breadcrumbs";
 
 const CategoriesPage = () => {
-  const { data: categoryTreeData, isLoading } = useCategoryTree();
+  // Показываем только категории с актуальными товарами
+  const { data: categoryTreeData, isLoading } = useCategoryTree(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 

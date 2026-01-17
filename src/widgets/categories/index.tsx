@@ -11,7 +11,8 @@ import { Skeleton } from "@/shared/ui/kit/skeleton";
 import { transformImageUrl } from "@/shared/lib/image-utils";
 
 const Categories = () => {
-  const { data: categoriesData, isLoading } = useCategoryTree();
+  // Показываем только категории с актуальными товарами
+  const { data: categoriesData, isLoading } = useCategoryTree(true);
 
   const softGradients = [
     "linear-gradient(135deg, #f9d8d6 0%, #f8e1e7 100%)",

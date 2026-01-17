@@ -6,17 +6,21 @@ import {
   UpdateCategoryDto,
 } from "../types/category";
 
-export const useCategories = (limit: number = 100, offset: number = 0) => {
+export const useCategories = (
+  limit: number = 100,
+  offset: number = 0,
+  only_with_products: boolean = false
+) => {
   return useQuery({
-    queryKey: ["categories", limit, offset],
-    queryFn: () => categoryApi.fetchCategories(limit, offset),
+    queryKey: ["categories", limit, offset, only_with_products],
+    queryFn: () => categoryApi.fetchCategories(limit, offset, only_with_products),
   });
 };
 
-export const useCategoryTree = () => {
+export const useCategoryTree = (only_with_products: boolean = false) => {
   return useQuery({
-    queryKey: ["category-tree"],
-    queryFn: () => categoryApi.fetchCategoryTree(),
+    queryKey: ["category-tree", only_with_products],
+    queryFn: () => categoryApi.fetchCategoryTree(only_with_products),
   });
 };
 

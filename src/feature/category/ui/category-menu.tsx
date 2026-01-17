@@ -14,7 +14,8 @@ import { Skeleton } from "@/shared/ui/kit/skeleton";
 import { transformImageUrl } from "@/shared/lib/image-utils";
 
 export const CategoryMenu = () => {
-  const { data: categoryTreeData, isLoading, error } = useCategoryTree();
+  // Показываем только категории с актуальными товарами
+  const { data: categoryTreeData, isLoading, error } = useCategoryTree(true);
 
   const mainCategories = categoryTreeData?.result?.filter(
     category => category.is_active && !category.parent_id
