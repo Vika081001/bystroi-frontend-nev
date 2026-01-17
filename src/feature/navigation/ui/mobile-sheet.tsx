@@ -22,7 +22,8 @@ import { useCart } from "@/entities/cart/model/hooks";
 
 export const MobileSheet = () => {
   const pathname = usePathname();
-  const { data: categoryTreeData, isLoading } = useCategoryTree();
+  // Показываем только категории с актуальными товарами
+  const { data: categoryTreeData, isLoading } = useCategoryTree(true);
   const { data: cartData } = useCart();
   const cartItemsCount = cartData?.goods?.length || 0;
 
