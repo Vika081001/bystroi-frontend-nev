@@ -53,11 +53,10 @@ export const addToFavorites = async (data: AddToFavoriteDto): Promise<Favorite> 
   return response.data;
 };
 
-export const removeFromFavorites = async (data: DeleteFavorite): Promise<string> => {
-  const response = await apiClient.delete<string>(`${ENTITY_URL}/${data.nomenclature_id}`, {
+export const removeFromFavorites = async (data: DeleteFavorite): Promise<void> => {
+  await apiClient.delete<void>(`${ENTITY_URL}/${data.favorite_id}`, {
     params: {
       phone: data.phone,
     },
   });
-  return response.data;
 };
