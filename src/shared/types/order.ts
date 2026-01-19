@@ -32,4 +32,5 @@ export interface CreateOrderParams extends CreateOrderDto, UtmParams {
 export interface CreateOrderResponse {
   message: string;
   processing_time_ms: number;
+  cart_cleared?: boolean;
 }

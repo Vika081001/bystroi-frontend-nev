@@ -4,6 +4,8 @@ import { useContragentPhone } from "./useContragentPhone";
 import { createOrder } from "../api/createOrder";
 import { CreateOrderParams } from "../types/order";
 import { useUtmParams } from "./useUtmParams";
+import { Cart } from "../types/cart";
+import { cartKeys } from "@/entities/cart/model/hooks";
 
 export const useCreateOrder = () => {
 
@@ -19,8 +21,20 @@ export const useCreateOrder = () => {
         ...utmParams,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+    onSuccess: (response) => {
+      // Если корзина очищена на бэкенде, обновляем локальное состояние
+      if (response.cart_cleared) {
+        const cartQueryKey = cartKeys.cartWithPhone(contragentPhone);
+        const emptyCart: Cart = {
+          contragent_phone: contragentPhone,
+          goods: [],
+          total_count: "0",
+        };
+        queryClient.setQueryData(cartQueryKey, emptyCart);
+      } else {
+        // Иначе просто инвалидируем кеш, чтобы запросить актуальное состояние
+        queryClient.invalidateQueries({ queryKey: cartKeys.root });
+      }
     },
     onError: (error) => {
       console.error("Ошибка при создании заказа:", error);
