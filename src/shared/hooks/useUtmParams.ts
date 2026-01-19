@@ -21,6 +21,7 @@ export const useUtmParams = () => {
       utm_source: searchParams?.get("utm_source") || undefined,
       utm_medium: searchParams?.get("utm_medium") || undefined,
       utm_campaign: searchParams?.get("utm_campaign") || undefined,
+      utm_term: searchParams?.get("utm_term") || undefined,
       utm_content: searchParams?.get("utm_content") || undefined,
       utm_name: searchParams?.get("utm_name") || undefined,
       utm_phone: searchParams?.get("utm_phone") || undefined,
@@ -28,6 +29,7 @@ export const useUtmParams = () => {
       utm_leadid: searchParams?.get("utm_leadid") || undefined,
       utm_yclientid: searchParams?.get("utm_yclientid") || undefined,
       utm_gaclientid: searchParams?.get("utm_gaclientid") || undefined,
+      ref_user: searchParams?.get("ref_user") || undefined,
     };
     
     if (hasAnyUtmParams(urlUtmParams)) {
