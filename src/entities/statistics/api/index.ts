@@ -13,6 +13,7 @@ export const createViewEvent = async (data: {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_term?: string;
   utm_content?: string;
   utm_name?: string;
   utm_phone?: string;
@@ -20,14 +21,48 @@ export const createViewEvent = async (data: {
   utm_leadid?: string;
   utm_yclientid?: string;
   utm_gaclientid?: string;
+  ref_user?: string;
 }) => {
   try {
+    // Разделяем данные на body и query params
+    const {
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_term,
+      utm_content,
+      utm_name,
+      utm_phone,
+      utm_email,
+      utm_leadid,
+      utm_yclientid,
+      utm_gaclientid,
+      ref_user,
+      ...bodyData
+    } = data;
+
+    // UTM параметры отправляем в query string
+    const queryParams: Record<string, string> = {};
+    if (utm_source) queryParams.utm_source = utm_source;
+    if (utm_medium) queryParams.utm_medium = utm_medium;
+    if (utm_campaign) queryParams.utm_campaign = utm_campaign;
+    if (utm_term) queryParams.utm_term = utm_term;
+    if (utm_content) queryParams.utm_content = utm_content;
+    if (utm_name) queryParams.utm_name = utm_name;
+    if (utm_phone) queryParams.utm_phone = utm_phone;
+    if (utm_email) queryParams.utm_email = utm_email;
+    if (utm_leadid) queryParams.utm_leadid = utm_leadid;
+    if (utm_yclientid) queryParams.utm_yclientid = utm_yclientid;
+    if (utm_gaclientid) queryParams.utm_gaclientid = utm_gaclientid;
+    if (ref_user) queryParams.ref_user = ref_user;
+
     const cleanedData = Object.fromEntries(
-      Object.entries(data).filter(([_, value]) => value !== undefined)
+      Object.entries(bodyData).filter(([_, value]) => value !== undefined)
     );
-    
-    
-    const response = await axios.post(`${API_BASE_URL}/events/view`, cleanedData);
+
+    const response = await axios.post(`${API_BASE_URL}/events/view`, cleanedData, {
+      params: queryParams,
+    });
     return response.data;
   } catch (error) {
     console.error("Error creating view event:", error);
