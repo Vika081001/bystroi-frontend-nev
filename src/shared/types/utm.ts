@@ -3,6 +3,7 @@ export interface UtmParams {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_term?: string;
   utm_content?: string;
   utm_name?: string;
   utm_phone?: string;
@@ -10,4 +11,5 @@ export interface UtmParams {
   utm_leadid?: string;
   utm_yclientid?: string;
   utm_gaclientid?: string;
+  ref_user?: string;
 }

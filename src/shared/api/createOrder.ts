@@ -8,6 +8,7 @@ export const createOrder = async (params: CreateOrderParams): Promise<CreateOrde
     utm_source,
     utm_medium,
     utm_campaign,
+    utm_term,
     utm_content,
     utm_name,
     utm_phone,
@@ -15,6 +16,7 @@ export const createOrder = async (params: CreateOrderParams): Promise<CreateOrde
     utm_leadid,
     utm_yclientid,
     utm_gaclientid,
+    ref_user,
     ...body
   } = params;
 
@@ -24,6 +26,7 @@ export const createOrder = async (params: CreateOrderParams): Promise<CreateOrde
       utm_source,
       utm_medium,
       utm_campaign,
+      utm_term,
       utm_content,
       utm_name,
       utm_phone,
@@ -31,6 +34,7 @@ export const createOrder = async (params: CreateOrderParams): Promise<CreateOrde
       utm_leadid,
       utm_yclientid,
       utm_gaclientid,
+      ref_user,
     },
   });
   
