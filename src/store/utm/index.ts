@@ -2,20 +2,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { UtmParams } from "@/shared/types/utm";
 
-const initialState: UtmParams = {
-  utm_source: undefined,
-  utm_medium: undefined,
-  utm_campaign: undefined,
-  utm_term: undefined,
-  utm_content: undefined,
-  utm_name: undefined,
-  utm_phone: undefined,
-  utm_email: undefined,
-  utm_leadid: undefined,
-  utm_yclientid: undefined,
-  utm_gaclientid: undefined,
-  ref_user: undefined,
-};
+const initialState: UtmParams = {};
 
 const utmSlice = createSlice({
   name: "utm",
