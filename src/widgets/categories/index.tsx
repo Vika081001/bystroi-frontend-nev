@@ -61,11 +61,26 @@ const Categories = () => {
         return false;
       }
       
-      // Проверяем, есть ли у категории дочерние категории с товарами
-      // Если есть дочерние категории, показываем категорию
-      const hasActiveChildren = category.children?.some(child => child.is_active);
+      // Функция для проверки, есть ли у категории или её дочерних категорий товары
+      const hasProductsInTree = (cat: typeof category): boolean => {
+        // Если у категории есть флаг has_products, используем его
+        if (cat.has_products === true) {
+          return true;
+        }
+        
+        // Если у категории есть дочерние категории, проверяем их рекурсивно
+        if (cat.children && cat.children.length > 0) {
+          return cat.children.some(child => {
+            if (!child.is_active) return false;
+            return hasProductsInTree(child);
+          });
+        }
+        
+        return false;
+      };
       
-      return hasActiveChildren;
+      // Проверяем, есть ли товары в дереве категории
+      return hasProductsInTree(category);
     }
   ) || [];
 

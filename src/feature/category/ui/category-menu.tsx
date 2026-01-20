@@ -19,13 +19,31 @@ export const CategoryMenu = () => {
 
   const mainCategories = categoryTreeData?.result?.filter(
     category => {
-      // Показываем только активные главные категории с дочерними категориями
+      // Показываем только активные главные категории
       if (!category.is_active || category.parent_id) {
         return false;
       }
-      // Проверяем, есть ли у категории активные дочерние категории
-      const hasActiveChildren = category.children?.some(child => child.is_active);
-      return hasActiveChildren;
+      
+      // Функция для проверки, есть ли у категории или её дочерних категорий товары
+      const hasProductsInTree = (cat: typeof category): boolean => {
+        // Если у категории есть флаг has_products, используем его
+        if (cat.has_products === true) {
+          return true;
+        }
+        
+        // Если у категории есть дочерние категории, проверяем их рекурсивно
+        if (cat.children && cat.children.length > 0) {
+          return cat.children.some(child => {
+            if (!child.is_active) return false;
+            return hasProductsInTree(child);
+          });
+        }
+        
+        return false;
+      };
+      
+      // Проверяем, есть ли товары в дереве категории
+      return hasProductsInTree(category);
     }
   ) || [];
 
