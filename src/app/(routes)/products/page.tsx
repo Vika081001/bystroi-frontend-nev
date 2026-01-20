@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/kit/select";
+import { useCategoryTree } from "@/shared/hooks/useCategory";
 
 import { GetProductsDto, SortBy, SortOrder, Product } from "@/entities/product/model/types";
 
@@ -49,6 +50,7 @@ const sortOptions: SortOption[] = [
 function ProductsContent() {
   const { currentSortType, applySort, currentParams } = useProductFilters();
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  const { data: categoryTreeData } = useCategoryTree(true);
 
   const { data: productsData, isLoading } = useQuery({
     queryKey: ["products", currentParams],
@@ -68,6 +70,30 @@ function ProductsContent() {
     sort_by: selectedSort.sort_by,
     sort_order: selectedSort.sort_order,
   };
+
+  // Находим название категории по global_category_id
+  const categoryName = useMemo(() => {
+    if (currentParams.category) {
+      return currentParams.category;
+    }
+    if (currentParams.global_category_id && categoryTreeData?.result) {
+      const findCategoryById = (categories: any[], id: number): any | null => {
+        for (const category of categories) {
+          if (category.id === id) {
+            return category;
+          }
+          if (category.children && category.children.length > 0) {
+            const found = findCategoryById(category.children, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const category = findCategoryById(categoryTreeData.result, currentParams.global_category_id);
+      return category?.name || null;
+    }
+    return null;
+  }, [currentParams.category, currentParams.global_category_id, categoryTreeData]);
 
   const { minPrice, maxPrice, categories, manufacturers } = useMemo(() => {
     const productsWithPrice = products.filter((p: Product) => p.price != null);
@@ -111,11 +137,11 @@ function ProductsContent() {
       <div className="container">
         <BreadcrumbsDemo 
           isProduct={false}
-          categoryName={currentParams.category}
+          categoryName={categoryName || null}
         />
         <div className="flex flex-col gap-2 md:flex-row md:justify-between">
           <h1 className="text-lg font-medium tracking-tight">
-            {listParams.category ? listParams.category : "Категория"} ({totalCount !== null ? totalCount : "..."}) 
+            {categoryName || "Категория"} ({totalCount !== null ? totalCount : "..."}) 
           </h1>
           <div className="flex gap-2">
             <Select

@@ -24,9 +24,19 @@ export const CategoryMenu = () => {
         return false;
       }
       
+      // Если у категории есть флаг has_products === true, показываем её
+      if (category.has_products === true) {
+        return true;
+      }
+      
+      // Если у категории нет дочерних категорий и has_products не true, не показываем
+      if (!category.children || category.children.length === 0) {
+        return false;
+      }
+      
       // Функция для проверки, есть ли у категории или её дочерних категорий товары
       const hasProductsInTree = (cat: typeof category): boolean => {
-        // Если у категории есть флаг has_products, используем его
+        // Если у категории есть флаг has_products === true, есть товары
         if (cat.has_products === true) {
           return true;
         }
@@ -42,8 +52,13 @@ export const CategoryMenu = () => {
         return false;
       };
       
-      // Проверяем, есть ли товары в дереве категории
-      return hasProductsInTree(category);
+      // Проверяем, есть ли товары в дереве дочерних категорий
+      const hasActiveChildrenWithProducts = category.children.some(child => {
+        if (!child.is_active) return false;
+        return hasProductsInTree(child);
+      });
+      
+      return hasActiveChildrenWithProducts;
     }
   ) || [];
 
