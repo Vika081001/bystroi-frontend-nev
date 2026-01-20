@@ -55,7 +55,18 @@ const Categories = () => {
 
 
   const mainCategories = categoriesData?.result?.filter(
-    category => !category.parent_id
+    category => {
+      // Показываем только активные главные категории
+      if (!category.is_active || category.parent_id) {
+        return false;
+      }
+      
+      // Проверяем, есть ли у категории дочерние категории с товарами
+      // Если есть дочерние категории, показываем категорию
+      const hasActiveChildren = category.children?.some(child => child.is_active);
+      
+      return hasActiveChildren;
+    }
   ) || [];
 
   const displayedCategories = mainCategories.slice(0, 7);

@@ -28,7 +28,15 @@ export const MobileSheet = () => {
   const cartItemsCount = cartData?.goods?.length || 0;
 
   const mainCategories = categoryTreeData?.result?.filter(
-    category => category.is_active && !category.parent_id
+    category => {
+      // Показываем только активные главные категории с дочерними категориями
+      if (!category.is_active || category.parent_id) {
+        return false;
+      }
+      // Проверяем, есть ли у категории активные дочерние категории
+      const hasActiveChildren = category.children?.some(child => child.is_active);
+      return hasActiveChildren;
+    }
   ) || [];
 
   const isActive = (path: string) => pathname === path;

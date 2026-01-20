@@ -18,7 +18,15 @@ export const CategoryMenu = () => {
   const { data: categoryTreeData, isLoading, error } = useCategoryTree(true);
 
   const mainCategories = categoryTreeData?.result?.filter(
-    category => category.is_active && !category.parent_id
+    category => {
+      // Показываем только активные главные категории с дочерними категориями
+      if (!category.is_active || category.parent_id) {
+        return false;
+      }
+      // Проверяем, есть ли у категории активные дочерние категории
+      const hasActiveChildren = category.children?.some(child => child.is_active);
+      return hasActiveChildren;
+    }
   ) || [];
 
   const getFirstLevelChildren = (categoryId: number) => {
