@@ -13,7 +13,9 @@ import {
 } from "@/shared/ui/kit/input-group";
 import { Separator } from "@/shared/ui/kit/separator";
 import { Slider } from "@/shared/ui/kit/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/kit/select";
 import { useDebouncedCallback } from "use-debounce";
+import { useCategoryTree } from "@/shared/hooks/useCategory";
 
 interface FilterProps {
   products?: any[];
@@ -32,6 +34,13 @@ export const Filter = ({
 }: FilterProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const { data: globalCategoriesData } = useCategoryTree(true);
 
   const currentFilters = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -44,6 +53,7 @@ export const Filter = ({
       category: params.get("category") || undefined,
       manufacturer: params.get("manufacturer") || undefined,
       in_stock: params.get("in_stock") === "true",
+      global_category_id: params.has("global_category_id") ? Number(params.get("global_category_id")) : undefined,
     };
   }, [searchParams]);
 
@@ -160,6 +170,10 @@ export const Filter = ({
     updateUrl({ in_stock: checked });
   };
 
+  const handleGlobalCategoryChange = (categoryId: string) => {
+    updateUrl({ global_category_id: categoryId === "all" ? undefined : Number(categoryId) });
+  };
+
   const handleResetFilters = () => {
     const params = new URLSearchParams();
     if (searchParams.has("sort")) {
@@ -175,6 +189,7 @@ export const Filter = ({
     if (currentFilters.category) count++;
     if (currentFilters.manufacturer) count++;
     if (currentFilters.in_stock) count++;
+    if (currentFilters.global_category_id !== undefined) count++;
     return count;
   }, [currentFilters]);
 
@@ -289,6 +304,48 @@ export const Filter = ({
           </div>
 
           <Separator />
+
+          {isMounted && globalCategoriesData?.result && globalCategoriesData.result.length > 0 && (
+            <>
+              <div>
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">Глобальная категория</p>
+                  {currentFilters.global_category_id !== undefined ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateUrl({ global_category_id: undefined })}
+                      className="h-6 px-2 text-xs"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Сбросить
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="pt-2">
+                  <Select
+                    value={currentFilters.global_category_id?.toString() || "all"}
+                    onValueChange={handleGlobalCategoryChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Выберите категорию" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все категории</SelectItem>
+                      {globalCategoriesData.result
+                        .filter(cat => !cat.parent_id)
+                        .map((category) => (
+                          <SelectItem key={category.id} value={category.id.toString()}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
 
           {uniqueCategories.length > 0 && (
             <>

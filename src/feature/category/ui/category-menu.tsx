@@ -84,7 +84,7 @@ export const CategoryMenu = () => {
             <div className="grid grid-cols-3 gap-8">
               {popularCategories.map((category) => (
                 <Link
-                  href={`/products?category=${category.name}`}
+                  href={`/products?global_category_id=${category.id}`}
                   key={category.id}
                   className="relative group flex h-24 items-end p-4 rounded-lg overflow-hidden hover:ring-2 hover:ring-gray-200"
                 >
@@ -118,7 +118,7 @@ export const CategoryMenu = () => {
                 <div key={groupIndex} className="flex gap-4">
                   {group[0] && (
                     <Link
-                      href={`/products?category=${group[0].id}`}
+                      href={`/products?global_category_id=${group[0].id}`}
                       className="relative group flex h-56 w-42 items-end p-4 rounded-lg overflow-hidden hover:ring-2 hover:ring-gray-200"
                     >
                       <div className="flex justify-center absolute inset-0 brightness-75 group-hover:brightness-50">
@@ -151,7 +151,7 @@ export const CategoryMenu = () => {
                       return (
                         <React.Fragment key={category.id}>
                           <Link 
-                            href={`/products?category=${category.name}`} 
+                            href={`/products?global_category_id=${category.id}`} 
                             className="font-medium text-lg tracking-tight hover:text-blue-600"
                           >
                             {category.name}
@@ -161,8 +161,8 @@ export const CategoryMenu = () => {
                               .slice(0, 3)
                               .map((child) => (
                                 <Link
-                                  key={child.name}
-                                  href={`/products?category=${child.name}`}
+                                  key={child.id}
+                                  href={`/products?global_category_id=${child.id}`}
                                   className="text-sm tracking-tight text-gray-500 hover:text-gray-700"
                                 >
                                   {child.name}

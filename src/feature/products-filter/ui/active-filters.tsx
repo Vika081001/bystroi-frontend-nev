@@ -1,11 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 import { Badge } from "@/shared/ui/kit/badge";
 import { Button } from "@/shared/ui/kit/button";
 import { useProductFilters } from "../hooks/useProductFilters";
+import { useCategoryTree } from "@/shared/hooks/useCategory";
 
 interface ActiveFiltersProps {
   onFiltersChange?: () => void;
@@ -13,6 +14,12 @@ interface ActiveFiltersProps {
 
 const ActiveFilters: React.FC<ActiveFiltersProps> = ({ onFiltersChange }) => {
   const { currentParams, removeFilter, resetFilters } = useProductFilters();
+  const { data: globalCategoriesData } = useCategoryTree(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const activeFilters = [];
 
@@ -63,6 +70,22 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ onFiltersChange }) => {
       key: "in_stock",
       value: "true",
       label: "Только в наличии"
+    });
+  }
+
+  if (currentParams.global_category_id !== undefined) {
+    // На сервере всегда показываем ID, чтобы избежать ошибки гидратации
+    // На клиенте после монтирования показываем имя категории, если оно загружено
+    const categoryName = isMounted && globalCategoriesData?.result
+      ? globalCategoriesData.result.find(
+          cat => cat.id === currentParams.global_category_id
+        )?.name || `ID: ${currentParams.global_category_id}`
+      : `ID: ${currentParams.global_category_id}`;
+    
+    activeFilters.push({
+      key: "global_category_id",
+      value: currentParams.global_category_id.toString(),
+      label: `Глобальная категория: ${categoryName}`
     });
   }
 
