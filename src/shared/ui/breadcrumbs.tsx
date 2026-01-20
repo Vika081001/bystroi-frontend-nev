@@ -60,8 +60,8 @@ export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
     return path || [];
   }, [categoryName, categoryTreeData]);
 
-  const getCategoryUrl = (name: string) => {
-    return `/products/?category=${name}`;
+  const getCategoryUrl = (category: any) => {
+    return `/products/?global_category_id=${category.id}`;
   };
 
   if (isProduct) {
@@ -118,7 +118,7 @@ export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
                     <BreadcrumbPage>{category.name}</BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink asChild>
-                      <Link href={getCategoryUrl(category.name)}>
+                      <Link href={getCategoryUrl(category)}>
                         {category.name}
                       </Link>
                     </BreadcrumbLink>

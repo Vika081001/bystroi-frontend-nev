@@ -79,7 +79,7 @@ const Categories = () => {
 
             return (
               <a
-                href={`/products?category=${category.name}`}
+                href={`/products?global_category_id=${category.id}`}
                 style={{ background: gradient }}
                 className="relative group flex h-56 items-end p-4 rounded-lg overflow-hidden hover:ring-2 hover:ring-gray-200"
                 key={category.id}

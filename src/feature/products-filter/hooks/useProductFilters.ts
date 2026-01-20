@@ -12,9 +12,8 @@ export const useProductFilters = () => {
   const currentParams = useMemo(() => {
     const params: Partial<GetProductsDto> = {};
     
-    if (typeof window === 'undefined') return params;
-    
     try {
+      // Устанавливаем сортировку по умолчанию, если не указана
       if (searchParams.has("sort")) {
         const sortValue = searchParams.get("sort");
         switch (sortValue) {
@@ -39,6 +38,10 @@ export const useProductFilters = () => {
             params.sort_order = "desc";
             break;
         }
+      } else {
+        // Сортировка по умолчанию
+        params.sort_by = "total_sold";
+        params.sort_order = "desc";
       }
       
       if (searchParams.has("category")) {
@@ -62,16 +65,20 @@ export const useProductFilters = () => {
       if (searchParams.has("in_stock")) {
         params.in_stock = searchParams.get("in_stock") === "true";
       }
+      if (searchParams.has("global_category_id")) {
+        params.global_category_id = Number(searchParams.get("global_category_id"));
+      }
     } catch (error) {
       console.error("Error parsing search params:", error);
+      // В случае ошибки устанавливаем сортировку по умолчанию
+      params.sort_by = "total_sold";
+      params.sort_order = "desc";
     }
     
     return params;
   }, [searchParams]);
 
   const updateUrlWithFilters = useCallback((newFilters: Record<string, string | number | boolean | undefined>) => {
-    if (typeof window === 'undefined') return;
-    
     try {
       const newParams = new URLSearchParams(searchParams.toString());
       
@@ -130,6 +137,8 @@ export const useProductFilters = () => {
     } else if (key === "rating") {
       newParams.delete("rating_from");
       newParams.delete("rating_to");
+    } else if (key === "global_category_id") {
+      newParams.delete("global_category_id");
     } else {
       newParams.delete(key);
     }

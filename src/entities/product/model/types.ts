@@ -71,7 +71,8 @@ export interface GetProductsDto {
   rating_from?: number;
   rating_to?: number;
   sort_type?: SortType;
-  page?: number,
+  page?: number;
+  global_category_id?: number;
 }
 
 export interface GetProductDto {
