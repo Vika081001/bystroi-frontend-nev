@@ -23,7 +23,8 @@ export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
   productName = "",
   categoryName = null,
 }) => {
-  const { data: categoryTreeData } = useCategoryTree();
+  // Показываем только активные категории с товарами
+  const { data: categoryTreeData } = useCategoryTree(true);
 
   
   const findCategoryPathByName = useMemo(() => {
@@ -35,6 +36,11 @@ export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
       currentPath: any[] = []
     ): any[] | null => {
       for (const category of categories) {
+        // Пропускаем неактивные категории
+        if (!category.is_active) {
+          continue;
+        }
+        
         const newPath = [...currentPath, category];
         
         
@@ -47,9 +53,13 @@ export const BreadcrumbsDemo: React.FC<BreadcrumbsDemoProps> = ({
         
         
         if (category.children && category.children.length > 0) {
-          const childPath = findPath(category.children, targetName, newPath);
-          if (childPath) {
-            return childPath;
+          // Фильтруем только активные дочерние категории
+          const activeChildren = category.children.filter((child: any) => child.is_active);
+          if (activeChildren.length > 0) {
+            const childPath = findPath(activeChildren, targetName, newPath);
+            if (childPath) {
+              return childPath;
+            }
           }
         }
       }
