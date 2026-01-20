@@ -11,6 +11,10 @@ import {
 const ENTITY_URL = "/favorites";
 
 export const fetchFavorites = async (params: GetFavoritesParams): Promise<FavoritesResponse> => {
+  if (!params.phone) {
+    throw new Error("Phone is required to fetch favorites");
+  }
+  
   const response = await apiClient.get<FavoritesResponse>(ENTITY_URL, {
     params: {
       phone: params.phone,
