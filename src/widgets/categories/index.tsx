@@ -55,7 +55,51 @@ const Categories = () => {
 
 
   const mainCategories = categoriesData?.result?.filter(
-    category => !category.parent_id
+    category => {
+      // Показываем только активные главные категории
+      if (!category.is_active || category.parent_id) {
+        return false;
+      }
+      
+      // Если у категории есть флаг has_products === true, показываем её
+      if (category.has_products === true) {
+        return true;
+      }
+      
+      // Если у категории нет дочерних категорий и has_products не true, не показываем
+      if (!category.children || category.children.length === 0) {
+        return false;
+      }
+      
+      // Функция для проверки, есть ли у категории или её дочерних категорий товары
+      const hasProductsInTree = (cat: typeof category): boolean => {
+        // Если у категории есть флаг has_products === true, есть товары
+        if (cat.has_products === true) {
+          return true;
+        }
+        
+        // Если у категории есть дочерние категории, проверяем их рекурсивно
+        if (cat.children && cat.children.length > 0) {
+          // Проверяем, есть ли хотя бы одна активная дочерняя категория с товарами
+          return cat.children.some(child => {
+            if (!child.is_active) return false;
+            return hasProductsInTree(child);
+          });
+        }
+        
+        // Если нет дочерних и has_products не true, товаров нет
+        return false;
+      };
+      
+      // Проверяем, есть ли товары в дереве дочерних категорий
+      const hasActiveChildrenWithProducts = category.children.some(child => {
+        if (!child.is_active) return false;
+        return hasProductsInTree(child);
+      });
+      
+      // Показываем только если есть активные дочерние категории с товарами
+      return hasActiveChildrenWithProducts;
+    }
   ) || [];
 
   const displayedCategories = mainCategories.slice(0, 7);

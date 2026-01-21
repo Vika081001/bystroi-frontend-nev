@@ -183,7 +183,7 @@ const CategoriesPage = () => {
                   </div>
                   
                   <Button asChild className="mb-6 bg-blue-500">
-                    <Link href={`/products?category=${selectedCategory.id}`}>
+                    <Link href={`/products?global_category_id=${selectedCategory.id}`}>
                       Перейти к товарам этой категории
                     </Link>
                   </Button>
@@ -207,7 +207,7 @@ const CategoriesPage = () => {
                             className="border rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all"
                         >
                             <Link 
-                            href={`/products?category=${child.name}`}
+                            href={`/products?global_category_id=${child.id}`}
                             className="block"
                             >
                             <div className="flex items-center gap-3 mb-3">
@@ -241,7 +241,7 @@ const CategoriesPage = () => {
                                 {displayChildren.map((grandChild: any) => (
                                 <Link
                                     key={grandChild.id}
-                                    href={`/products?category=${grandChild.name}`}
+                                    href={`/products?global_category_id=${grandChild.id}`}
                                     className="block text-sm text-gray-600 hover:text-blue-600 py-1 px-2 hover:bg-blue-50 rounded"
                                 >
                                     {grandChild.name}
@@ -262,7 +262,7 @@ const CategoriesPage = () => {
                             </div>
                             ) : (
                             <Link
-                                href={`/products?category=${child.name}`}
+                                href={`/products?global_category_id=${child.id}`}
                                 className="block text-sm text-gray-600 hover:text-blue-600 py-2 px-2 hover:bg-blue-50 rounded mt-2"
                             >
                                 Перейти к товарам этой подкатегории
@@ -283,7 +283,7 @@ const CategoriesPage = () => {
                       В этой категории пока нет подкатегорий
                     </p>
                     <Button asChild>
-                      <Link href={`/products?category=${selectedCategory.id}`}>
+                      <Link href={`/products?global_category_id=${selectedCategory.id}`}>
                         Смотреть товары категории
                       </Link>
                     </Button>
