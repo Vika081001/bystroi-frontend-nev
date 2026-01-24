@@ -2,7 +2,8 @@
 
 import { Bell, Heart, Star, User } from "lucide-react";
 import Link from "next/link";
-import React, { Suspense } from "react";
+import React, { Suspense, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { LoginPopup } from "@/feature/auth";
 import { CartPopup } from "@/feature/cart";
@@ -14,6 +15,10 @@ import { SearchBar } from "../search/search";
 import { Button } from "@/shared/ui/kit/button";
 
 export const Header = () => {
+  const searchParams = useSearchParams();
+  const queryString = useMemo(() => searchParams.toString(), [searchParams]);
+  const withQuery = (path: string) => (queryString ? `${path}?${queryString}` : path);
+
   return (
     <header className="relative z-50 border-b border-gray-100 bg-white">
       <div className="bg-gray-100">
@@ -45,7 +50,7 @@ export const Header = () => {
         <div className="flex gap-2 lg:gap-6 py-3 items-center justify-between">
          
           <Link
-            href="/"
+            href={withQuery("/")}
             className="flex-shrink-0 gap-2 tracking-tight text-blue-600 text-2xl font-medium"
           >
             #Быстро и точка
@@ -66,12 +71,12 @@ export const Header = () => {
 
           
           <div className="flex items-center gap-2 text-gray-700">
-            <Link href="/rating" className="hidden md:flex ">
+            <Link href={withQuery("/rating")} className="hidden md:flex ">
               <Button size="icon" variant="ghost" className="cursor-pointer">
                 <Star width={20} height={20} />
               </Button>
             </Link>
-            <Link href="/favorites" className="hidden md:flex relative">
+            <Link href={withQuery("/favorites")} className="hidden md:flex relative">
               <Button size="icon" variant="ghost" className="cursor-pointer">
                 <Heart width={20} height={20} />
               </Button>

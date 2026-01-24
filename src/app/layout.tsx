@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 
@@ -26,7 +27,9 @@ export default function RootLayout({
       <body className="h-screen relative z-10">
         <ReduxProvider>
           <Providers>
-            <Header />
+            <Suspense fallback={null}>
+              <Header />
+            </Suspense>
               <main>{children}</main>
             <Footer />
             <Toaster closeButton />
