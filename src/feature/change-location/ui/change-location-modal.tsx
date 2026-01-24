@@ -556,6 +556,9 @@ export const ChangeLocationModal = () => {
                               const newCity = currentValue === selected?.name ? null : city;
                               setSelected(newCity);
                               setOpen(false);
+                              // Clear address/coords so city selection takes effect immediately
+                              setAddressInput("");
+                              setAddressCoords(null);
                               
                               // Обновляем URL с параметром city (для обратной совместимости)
                               if (newCity) {
