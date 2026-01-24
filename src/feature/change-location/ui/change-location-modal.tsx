@@ -492,41 +492,8 @@ export const ChangeLocationModal = () => {
                     return;
                   }
 
-                  let coords = addressCoords;
-                  let finalAddress = normalizeAddress(addressInput.trim());
-                  if (!coords) {
-                    setIsValidatingAddress(true);
-                    try {
-                      const result = await validateAddress(addressInput.trim());
-                      const inputCity = getInputCity(addressInput);
-                      const resultCity = normalizeAddress(result?.city || "").toLowerCase();
-                      const shouldTrustResult = Boolean(resultCity) && (!inputCity || inputCity === resultCity);
-                      let formattedAddress = shouldTrustResult
-                        ? formatAddressParts(
-                            result?.city || "",
-                            result?.street || "",
-                            result?.housenumber || "",
-                            addressInput.trim(),
-                          )
-                        : "";
-                      if (!formattedAddress) {
-                        formattedAddress = formatAddressFromInput(addressInput.trim());
-                      }
-                      if (!formattedAddress) {
-                        formattedAddress = formatAddressFromInput(addressInput.trim());
-                      }
-                      if (result?.latitude && result?.longitude) {
-                        coords = { lat: result.latitude, lon: result.longitude };
-                        setAddressCoords(coords);
-                      }
-                      if (formattedAddress) {
-                        finalAddress = formattedAddress;
-                        setAddressInput(formattedAddress);
-                      }
-                    } finally {
-                      setIsValidatingAddress(false);
-                    }
-                  }
+                  const coords = addressCoords;
+                  const finalAddress = addressInput.trim();
 
                   const newParams = new URLSearchParams(searchParams.toString());
                   newParams.set('address', finalAddress);
