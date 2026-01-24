@@ -253,24 +253,12 @@ export const ChangeLocationModal = () => {
   };
 
   const handleSelectSuggestion = async (suggestion: string) => {
-    setAddressInput(normalizeAddress(suggestion));
+    setAddressInput(suggestion);
     setShowSuggestions(false);
     setSuppressSuggestionsOnce(true);
     setIsValidatingAddress(true);
     try {
       const result = await validateAddress(suggestion);
-      let formattedAddress = formatAddressParts(
-        result?.city || "",
-        result?.street || "",
-        result?.housenumber || "",
-        suggestion,
-      );
-      if (!formattedAddress) {
-        formattedAddress = formatAddressFromInput(suggestion);
-      }
-      if (!formattedAddress) {
-        formattedAddress = formatAddressFromInput(suggestion);
-      }
       if (result?.latitude && result?.longitude) {
         setAddressCoords({ lat: result.latitude, lon: result.longitude });
       }
@@ -281,9 +269,6 @@ export const ChangeLocationModal = () => {
         if (cityMatch) {
           setSelected(cityMatch);
         }
-      }
-      if (formattedAddress) {
-        setAddressInput(formattedAddress);
       }
     } catch (error) {
       console.error("Error validating address:", error);
@@ -699,6 +684,7 @@ export const ChangeLocationModal = () => {
           <div className="lg:col-span-2 flex-1 min-h-0">
             <div className="h-full w-full rounded-lg overflow-hidden border border-gray-200 min-h-[400px]">
               <MapPreview
+                key={`${addressCoords?.lat ?? selected?.coords.lat ?? 0}-${addressCoords?.lon ?? selected?.coords.lon ?? 0}`}
                 lat={addressCoords?.lat || selected?.coords.lat || 55.7540471}
                 lon={addressCoords?.lon || selected?.coords.lon || 37.620405}
                 locations={warehouses.map(w => ({
