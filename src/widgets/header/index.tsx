@@ -24,7 +24,7 @@ export const Header = () => {
       <div className="bg-gray-100">
         <div className="container">
           <div className="flex justify-between items-center py-1">
-            <div className="flex gap-4">
+            <div className="flex gap-4 min-w-0 flex-1 overflow-hidden">
               <Suspense fallback={null}>
                 <ChangeLocationModal />
               </Suspense>

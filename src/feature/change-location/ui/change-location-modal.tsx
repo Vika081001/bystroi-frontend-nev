@@ -406,12 +406,12 @@ export const ChangeLocationModal = () => {
       <PopoverTrigger asChild>
         <Button
           variant="link"
-          className="text-sm font-medium !p-0 h-auto tracking-tight text-gray-700 hover:text-blue-600 cursor-pointer"
+          className="text-sm font-medium !p-0 h-auto tracking-tight text-gray-700 hover:text-blue-600 cursor-pointer max-w-full overflow-hidden"
         >
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-600" />
-            <span>{searchParams.get('address') || selected?.name || "Укажите адрес доставки"}</span>
-            <ChevronsUpDown className="w-3 h-3 ml-1 opacity-50" />
+          <div className="flex items-center gap-2 min-w-0 w-full">
+            <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <span className="truncate min-w-0">{searchParams.get('address') || selected?.name || "Укажите адрес доставки"}</span>
+            <ChevronsUpDown className="w-3 h-3 ml-1 opacity-50 flex-shrink-0" />
           </div>
         </Button>
       </PopoverTrigger>
