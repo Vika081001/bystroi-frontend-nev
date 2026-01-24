@@ -746,7 +746,7 @@ export const ChangeLocationModal = () => {
           </div>
         </div>
 
-        <div className="border-t p-1 pt-0.5 bg-white pb-[calc(4px+env(safe-area-inset-bottom))]">
+        <div className="border-t p-1 pt-0.5 bg-white pb-[calc(16px+env(safe-area-inset-bottom))]">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-0.5">
             <div className="text-[13px] text-gray-600 max-w-[260px] w-full text-center sm:text-left leading-tight">
               <p className="font-medium leading-tight">Вы выбрали: {selected?.name || "Москва"}</p>
