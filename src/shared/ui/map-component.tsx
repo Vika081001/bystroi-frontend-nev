@@ -48,7 +48,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
 
   if (!isMounted) {
     return (
-      <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-gray-100">
+      <div className="w-full h-full flex items-center justify-center bg-gray-100">
         <p className="text-gray-500">Загрузка карты...</p>
       </div>
     );
@@ -62,7 +62,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         style={{
           height: typeof height === "string" ? height : `${height}px`,
           width: typeof width === "string" ? width : `${width}px`,
-          minHeight: "400px",
+          minHeight: typeof height === "string" ? height : `${height}px`,
         }}
         attributionControl={true}
       >
@@ -107,7 +107,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         ))}
       </MapContainer>
 
-      <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-sm z-[1000]">
+      <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-1.5 shadow-sm z-[1000] text-xs leading-tight">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Пункты выдачи</p>

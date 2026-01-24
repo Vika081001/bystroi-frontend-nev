@@ -420,7 +420,7 @@ export const ChangeLocationModal = () => {
         className="flex flex-col h-[calc(100dvh_-_220px)] md:h-[560px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden"
         sideOffset={8}
       >
-        <div className="flex flex-col p-4">
+        <div className="hidden md:flex flex-col p-4">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-lg font-bold tracking-tight text-gray-900">
@@ -439,8 +439,8 @@ export const ChangeLocationModal = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 flex-1 gap-4 p-4 pt-0 overflow-hidden min-h-0">
-          <div className="lg:col-span-1 space-y-4 flex flex-col min-h-0">
+        <div className="flex flex-col lg:grid lg:grid-cols-3 md:flex-1 gap-4 p-4 pt-2 md:pt-0 pb-6 overflow-hidden min-h-0">
+          <div className="lg:col-span-1 space-y-4 flex flex-col min-h-0 order-1">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
                 Адрес доставки
@@ -452,9 +452,30 @@ export const ChangeLocationModal = () => {
                   placeholder="Санкт-Петербург, ул. Попова, д. 6"
                   value={addressInput}
                   onChange={(e) => {
-                    setAddressInput(e.target.value);
+                    const nextValue = e.target.value;
+                    setAddressInput(nextValue);
                     setAddressCoords(null);
                     setShowSuggestions(true);
+                    if (!nextValue.trim()) {
+                      const newParams = new URLSearchParams(searchParams.toString());
+                      newParams.delete("address");
+                      newParams.delete("lat");
+                      newParams.delete("lon");
+                      const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+                      router.push(nextPath, { scroll: false });
+                      try {
+                        const raw = localStorage.getItem(storageKey);
+                        const existing = raw ? JSON.parse(raw) as { city?: string } : {};
+                        localStorage.setItem(storageKey, JSON.stringify({
+                          ...existing,
+                          address: undefined,
+                          lat: undefined,
+                          lon: undefined,
+                        }));
+                      } catch (error) {
+                        console.error("Error clearing address:", error);
+                      }
+                    }
                   }}
                   onFocus={() => {
                     setIsAddressFocused(true);
@@ -616,10 +637,13 @@ export const ChangeLocationModal = () => {
                                 router.push(nextPath, { scroll: false });
                                 try {
                                   const raw = localStorage.getItem(storageKey);
-                                  const existing = raw ? JSON.parse(raw) as { address?: string; lat?: number; lon?: number } : {};
+                                  const existing = raw ? JSON.parse(raw) as { address?: string; lat?: number; lon?: number; city?: string } : {};
                                   localStorage.setItem(storageKey, JSON.stringify({
                                     ...existing,
                                     city: citySlug,
+                                    address: undefined,
+                                    lat: undefined,
+                                    lon: undefined,
                                   }));
                                 } catch (error) {
                                   console.error("Error saving city:", error);
@@ -650,7 +674,7 @@ export const ChangeLocationModal = () => {
               <h4 className="font-medium text-gray-900">
                 Пункты выдачи в {selected?.name || "городе"}
               </h4>
-              <div className="space-y-2 flex-1 overflow-y-auto min-h-0">
+              <div className="space-y-2 max-h-[200px] overflow-y-auto md:max-h-none md:flex-1 min-h-0">
                 {isLoadingWarehouses ? (
                   <div className="flex items-center justify-center py-8">
                     <p className="text-sm text-gray-500">Загрузка складов...</p>
@@ -703,8 +727,8 @@ export const ChangeLocationModal = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-2 flex-1 min-h-0">
-            <div className="h-full w-full rounded-lg overflow-hidden border border-gray-200 min-h-[400px]">
+          <div className="lg:col-span-2 flex-1 min-h-0 order-2">
+            <div className="w-full rounded-lg overflow-hidden border border-gray-200 h-[180px] md:h-full min-h-[180px] md:min-h-[400px] mb-3 md:mb-0">
               <MapPreview
                 key={`${addressCoords?.lat ?? selected?.coords.lat ?? 0}-${addressCoords?.lon ?? selected?.coords.lon ?? 0}`}
                 lat={addressCoords?.lat || selected?.coords.lat || 55.7540471}
@@ -722,11 +746,11 @@ export const ChangeLocationModal = () => {
           </div>
         </div>
 
-        <div className="border-t p-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-gray-600">
-              <p className="font-medium">Вы выбрали: {selected?.name || "Москва"}</p>
-              <p className="text-xs mt-1">
+        <div className="border-t p-1 pt-0.5 bg-white">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-0.5">
+            <div className="text-[13px] text-gray-600 max-w-[260px] w-full text-center sm:text-left leading-tight">
+              <p className="font-medium leading-tight">Вы выбрали: {selected?.name || "Москва"}</p>
+              <p className="text-[11px] leading-tight">
                 Доставка: 1-3 дня • Самовывоз: 1-2 часа
               </p>
             </div>

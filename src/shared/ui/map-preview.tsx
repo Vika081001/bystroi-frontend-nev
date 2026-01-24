@@ -9,7 +9,7 @@ const MapComponent = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-gray-100">
+      <div className="w-full h-full flex items-center justify-center bg-gray-100">
         <p className="text-gray-500">Загрузка карты...</p>
       </div>
     ),
@@ -45,7 +45,7 @@ export const MapPreview: React.FC<MapPreviewProps> = ({
     <div className="relative h-full w-full">
       <Suspense
         fallback={
-          <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-gray-100">
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
             <p className="text-gray-500">Загрузка карты...</p>
           </div>
         }
