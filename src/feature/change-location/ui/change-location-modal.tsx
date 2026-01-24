@@ -180,6 +180,26 @@ export const ChangeLocationModal = () => {
       .join(", ");
   };
 
+  const normalizeForCityMatch = (value: string) => {
+    return ` ${value.toLowerCase().replace(/[^a-zа-я0-9]+/gi, " ").replace(/\s+/g, " ").trim()} `;
+  };
+
+  const findCityInAddress = (address: string, list: City[]) => {
+    const normalizedAddress = normalizeForCityMatch(address);
+    return (
+      list.find((city) => {
+        const name = normalizeForCityMatch(city.name);
+        const alt = city.name_alt ? normalizeForCityMatch(city.name_alt) : "";
+        const en = city.name_en ? normalizeForCityMatch(city.name_en) : "";
+        return (
+          normalizedAddress.includes(name) ||
+          (alt && normalizedAddress.includes(alt)) ||
+          (en && normalizedAddress.includes(en))
+        );
+      }) || null
+    );
+  };
+
   const formatAddressParts = (
     city?: string | null,
     street?: string | null,
@@ -343,20 +363,7 @@ export const ChangeLocationModal = () => {
         // Если есть address, пытаемся извлечь название города из адреса
         const addressSource = addressParam || storedAddress;
         if (addressSource) {
-          // Пытаемся найти город в начале адреса (например, "Москва, ул. ..." или "Санкт-Петербург, ул. ...")
-          const addressLower = addressSource.toLowerCase();
-          cityToSelect = data.find(city => {
-            const cityNameLower = city.name.toLowerCase();
-            const cityNameAltLower = city.name_alt?.toLowerCase();
-            const cityNameEnLower = city.name_en?.toLowerCase();
-            
-            return addressLower.startsWith(cityNameLower + ',') ||
-                   addressLower.startsWith(cityNameAltLower + ',') ||
-                   addressLower.startsWith(cityNameEnLower + ',') ||
-                   addressLower.includes(cityNameLower) ||
-                   addressLower.includes(cityNameAltLower || '') ||
-                   addressLower.includes(cityNameEnLower || '');
-          }) || null;
+          cityToSelect = findCityInAddress(addressSource, data);
         }
         
         // Если не нашли по address, ищем по city
@@ -485,14 +492,18 @@ export const ChangeLocationModal = () => {
               {isLoadingSuggestions && (
                 <p className="text-xs text-gray-500">Ищем адреса...</p>
               )}
-              <Button
-                onClick={async () => {
+              <PopoverClose asChild>
+                <Button
+                  onClick={async () => {
                   if (!addressInput.trim()) {
                     return;
                   }
+                  // Close immediately after save click
+                  setOpen(false);
 
                   let coords = addressCoords;
                   const finalAddress = addressInput.trim();
+                  const cityFromAddress = findCityInAddress(finalAddress, cities);
                   if (!coords) {
                     setIsValidatingAddress(true);
                     try {
@@ -501,7 +512,7 @@ export const ChangeLocationModal = () => {
                         coords = { lat: result.latitude, lon: result.longitude };
                         setAddressCoords(coords);
                       }
-                      if (result?.city) {
+                      if (!cityFromAddress && result?.city) {
                         const cityMatch = cities.find(
                           city => city.name.toLowerCase() === result.city?.toLowerCase()
                         );
@@ -513,10 +524,19 @@ export const ChangeLocationModal = () => {
                       setIsValidatingAddress(false);
                     }
                   }
+                  let nextSelected = selected;
+                  if (cityFromAddress) {
+                    nextSelected = cityFromAddress;
+                    setSelected(cityFromAddress);
+                  }
 
                   const newParams = new URLSearchParams(searchParams.toString());
                   newParams.set('address', finalAddress);
                   newParams.delete('city');
+                  if (nextSelected) {
+                    const citySlug = nextSelected.name_en?.toLowerCase() || nextSelected.name.toLowerCase();
+                    newParams.set('city', citySlug);
+                  }
                   if (coords) {
                     newParams.set('lat', String(coords.lat));
                     newParams.set('lon', String(coords.lon));
@@ -534,16 +554,18 @@ export const ChangeLocationModal = () => {
                       address: finalAddress,
                       lat: coords?.lat,
                       lon: coords?.lon,
+                      city: nextSelected?.name_en?.toLowerCase() || nextSelected?.name?.toLowerCase(),
                     }));
                   } catch (error) {
                     console.error("Error saving address:", error);
                   }
                   setOpen(false);
-                }}
-                className="w-full"
-              >
-                {isValidatingAddress ? "Проверяем адрес..." : "Сохранить"}
-              </Button>
+                  }}
+                  className="w-full"
+                >
+                  {isValidatingAddress ? "Проверяем адрес..." : "Сохранить"}
+                </Button>
+              </PopoverClose>
             </div>
             <div>
               <Popover open={open} onOpenChange={setOpen}>
