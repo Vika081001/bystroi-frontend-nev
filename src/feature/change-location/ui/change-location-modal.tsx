@@ -417,7 +417,7 @@ export const ChangeLocationModal = () => {
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="flex flex-col h-[calc(100svh_-_220px)] md:h-[560px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden pb-[env(safe-area-inset-bottom)]"
+        className="flex flex-col h-[calc(100svh_-_120px)] md:h-[560px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden pb-[env(safe-area-inset-bottom)]"
         sideOffset={8}
       >
         <div className="hidden md:flex flex-col p-4">
