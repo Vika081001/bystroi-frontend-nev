@@ -417,7 +417,7 @@ export const ChangeLocationModal = () => {
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="flex flex-col h-[calc(100dvh_-_220px)] md:h-[560px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden"
+        className="flex flex-col h-[calc(100svh_-_220px)] md:h-[560px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden pb-[env(safe-area-inset-bottom)]"
         sideOffset={8}
       >
         <div className="hidden md:flex flex-col p-4">
@@ -746,7 +746,7 @@ export const ChangeLocationModal = () => {
           </div>
         </div>
 
-        <div className="border-t p-1 pt-0.5 bg-white">
+        <div className="border-t p-1 pt-0.5 bg-white pb-[calc(4px+env(safe-area-inset-bottom))]">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-0.5">
             <div className="text-[13px] text-gray-600 max-w-[260px] w-full text-center sm:text-left leading-tight">
               <p className="font-medium leading-tight">Вы выбрали: {selected?.name || "Москва"}</p>
