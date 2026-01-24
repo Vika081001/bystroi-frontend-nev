@@ -506,8 +506,28 @@ export const ChangeLocationModal = () => {
                     return;
                   }
 
-                  const coords = addressCoords;
+                  let coords = addressCoords;
                   const finalAddress = addressInput.trim();
+                  if (!coords) {
+                    setIsValidatingAddress(true);
+                    try {
+                      const result = await validateAddress(finalAddress);
+                      if (result?.latitude && result?.longitude) {
+                        coords = { lat: result.latitude, lon: result.longitude };
+                        setAddressCoords(coords);
+                      }
+                      if (result?.city) {
+                        const cityMatch = cities.find(
+                          city => city.name.toLowerCase() === result.city?.toLowerCase()
+                        );
+                        if (cityMatch) {
+                          setSelected(cityMatch);
+                        }
+                      }
+                    } finally {
+                      setIsValidatingAddress(false);
+                    }
+                  }
 
                   const newParams = new URLSearchParams(searchParams.toString());
                   newParams.set('address', finalAddress);
@@ -706,11 +726,13 @@ export const ChangeLocationModal = () => {
               <PopoverClose asChild>
                 <Button variant="outline">Отмена</Button>
               </PopoverClose>
-              <PopoverClose asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  Сохранить город
-                </Button>
-              </PopoverClose>
+              {!addressInput.trim() && (
+                <PopoverClose asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    Сохранить город
+                  </Button>
+                </PopoverClose>
+              )}
             </div>
           </div>
         </div>
