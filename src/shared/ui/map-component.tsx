@@ -107,7 +107,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
         ))}
       </MapContainer>
 
-      <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-1.5 shadow-sm z-[1000] text-xs leading-tight">
+      <div className="absolute bottom-0.5 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-1.5 shadow-sm z-[1000] text-xs leading-tight">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Пункты выдачи</p>
