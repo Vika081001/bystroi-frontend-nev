@@ -50,6 +50,8 @@ export const ChangeLocationModal = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
+  const [suppressSuggestionsOnce, setSuppressSuggestionsOnce] = useState(false);
+  const [isAddressFocused, setIsAddressFocused] = useState(false);
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lon: number } | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -127,6 +129,12 @@ export const ChangeLocationModal = () => {
       setShowSuggestions(false);
       return;
     }
+    if (suppressSuggestionsOnce) {
+      setSuppressSuggestionsOnce(false);
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
 
     let isActive = true;
     setIsLoadingSuggestions(true);
@@ -134,7 +142,7 @@ export const ChangeLocationModal = () => {
       .then((suggestions) => {
         if (!isActive) return;
         setAddressSuggestions(suggestions);
-        setShowSuggestions(suggestions.length > 0);
+        setShowSuggestions(isAddressFocused && suggestions.length > 0);
       })
       .catch((error) => {
         console.error("Error loading address suggestions:", error);
@@ -247,6 +255,7 @@ export const ChangeLocationModal = () => {
   const handleSelectSuggestion = async (suggestion: string) => {
     setAddressInput(normalizeAddress(suggestion));
     setShowSuggestions(false);
+    setSuppressSuggestionsOnce(true);
     setIsValidatingAddress(true);
     try {
       const result = await validateAddress(suggestion);
@@ -456,9 +465,14 @@ export const ChangeLocationModal = () => {
                     setShowSuggestions(true);
                   }}
                   onFocus={() => {
+                    setIsAddressFocused(true);
                     if (addressSuggestions.length > 0) {
                       setShowSuggestions(true);
                     }
+                  }}
+                  onBlur={() => {
+                    setIsAddressFocused(false);
+                    setTimeout(() => setShowSuggestions(false), 100);
                   }}
                   className="pl-10"
                 />
