@@ -1,7 +1,7 @@
 "use client";
 import { LockIcon, X, CheckCircle, AlertCircle, LocateIcon } from "lucide-react";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useCart } from "@/entities/cart/model/hooks";
 import { useCartItems } from "@/entities/cart/model/hooks";
@@ -74,6 +74,7 @@ function PaymentContent() {
 
   const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
   const [isGeolocationLoading, setIsGeolocationLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [orderModal, setOrderModal] = useState<OrderModalData>({
     isOpen: false,
@@ -82,6 +83,7 @@ function PaymentContent() {
     message: "",
   });
   const userDataAuth = useDataUser();
+  const searchParams = useSearchParams();
 
   
 
@@ -121,9 +123,15 @@ function PaymentContent() {
   };
 
   const handleGeolocationClick = async () => {
-
+    setIsGeolocationLoading(true);
+    setGeoError(null);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        if (position.coords.accuracy && position.coords.accuracy > 200) {
+          setGeoError("Геолокация неточная. Введите адрес вручную.");
+          setIsGeolocationLoading(false);
+          return;
+        }
         const coords = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
@@ -143,6 +151,9 @@ function PaymentContent() {
           }
         } catch (error) {
           console.error("Ошибка при получении адреса:", error);
+          setGeoError("Не удалось определить адрес. Введите вручную.");
+        } finally {
+          setIsGeolocationLoading(false);
         }
       },
       (error) => {
@@ -161,6 +172,7 @@ function PaymentContent() {
             errorMessage = "Время запроса геолокации истекло";
             break;
         }
+        setGeoError(errorMessage);
         
       },
       {
@@ -173,13 +185,16 @@ function PaymentContent() {
 
   useEffect(() => {
     let userData: UserData | null = null;
+    const addressFromUrl = searchParams.get("address");
+    const locationRaw = localStorage.getItem("bystroi_location");
+    const locationStored = locationRaw ? JSON.parse(locationRaw) as { address?: string } : {};
 
     if(userDataAuth) {
       setFormData(prev => ({
         ...prev,
         name: userDataAuth!.name,
         phone: userDataAuth!.contragent_phone,
-        address: userDataAuth!.address || '',
+        address: addressFromUrl || locationStored.address || userDataAuth!.address || '',
       }));
       if(!userDataAuth.address) {
         userDataAuth.address = formData.address;
@@ -212,10 +227,10 @@ function PaymentContent() {
         ...prev,
         name: userData!.name,
         phone: userData!.phone,
-        address: userData!.address || "",
+        address: addressFromUrl || locationStored.address || userData!.address || "",
       }));
     }
-  }, [contragentPhone, isInitialized]);
+  }, [contragentPhone, isInitialized, searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -534,6 +549,11 @@ function PaymentContent() {
                       className="pr-10 h-10 md:h-11 text-sm md:text-base"
                     />
                   </div>
+                {geoError && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {geoError}
+                  </p>
+                )}
                   <p className="text-xs text-gray-500 mt-1">
                     Нажмите на иконку локации для автоматического определения адреса
                   </p>

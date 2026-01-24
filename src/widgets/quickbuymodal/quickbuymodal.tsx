@@ -2,6 +2,7 @@
 
 import { LockIcon, Loader2, Minus, Plus } from "lucide-react";
 import React, { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/shared/ui/kit/button";
 import { Input } from "@/shared/ui/kit/input";
@@ -48,6 +49,7 @@ const QuickBuyModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const userDataAuth = useDataUser();
+  const searchParams = useSearchParams();
 
   const handleDecreaseQuantity = () => {
     setFormData(prev => ({
@@ -85,44 +87,39 @@ const QuickBuyModal = ({
   };
   
   useEffect(() => {
-    if(userDataAuth) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    const addressFromUrl = searchParams.get("address");
+    const locationRaw = localStorage.getItem("bystroi_location");
+    const locationStored = locationRaw ? JSON.parse(locationRaw) as { address?: string } : {};
+
+    if (userDataAuth) {
       setFormData(prev => ({
         ...prev,
         name: userDataAuth!.name,
         phone: userDataAuth!.contragent_phone,
-        address: userDataAuth!.address || '',
+        address: addressFromUrl || locationStored.address || userDataAuth!.address || "",
       }));
-      if(!userDataAuth.address) {
-        if (!formData.address) {
-          const adress = localStorage.getItem('user_delivery_data');
-          if (adress) {
-            const parsedData = JSON.parse(adress);
-            setFormData(prev => ({
-              ...prev,
-              address: parsedData!.address || '',
-            }));
-          }
-        }
-      }
-      localStorage.setItem("user_delivery_data", JSON.stringify(formData));
     } else {
-      const savedData = localStorage.getItem('user_delivery_data');
+      const savedData = localStorage.getItem("user_delivery_data");
       if (savedData) {
         try {
           const parsedData = JSON.parse(savedData);
-         setFormData(prev => ({
+          setFormData(prev => ({
             ...prev,
             name: parsedData!.name,
             phone: parsedData!.contragent_phone,
-            address: parsedData!.address || '',
+            address: addressFromUrl || locationStored.address || parsedData!.address || "",
           }));
         } catch (error) {
-          console.error('Error parsing localStorage data:', error);
+          console.error("Error parsing localStorage data:", error);
         }
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          address: addressFromUrl || locationStored.address || "",
+        }));
       }
     }
-  }, []);
+  }, [searchParams, userDataAuth]);
 
   const totalPrice = productPrice * formData.quantity;
 

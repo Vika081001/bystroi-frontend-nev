@@ -11,6 +11,8 @@ import { cn } from "@/shared/lib/utils";
 import { City } from "@/shared/types/city";
 import { Button } from "@/shared/ui/kit/button";
 import { Input } from "@/shared/ui/kit/input";
+import { fetchAddressSuggestions, validateAddress } from "@/shared/api/autosuggestions";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import {
   Command,
   CommandEmpty,
@@ -44,8 +46,15 @@ export const ChangeLocationModal = () => {
   const [selected, setSelected] = useState<City | null>(null);
   const [open, setOpen] = useState(false);
   const [addressInput, setAddressInput] = useState<string>("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [isValidatingAddress, setIsValidatingAddress] = useState(false);
+  const [addressCoords, setAddressCoords] = useState<{ lat: number; lon: number } | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const storageKey = "bystroi_location";
+  const debouncedAddress = useDebounce(addressInput, 300);
   
   // Читаем адрес из URL при загрузке
   useEffect(() => {
@@ -53,7 +62,49 @@ export const ChangeLocationModal = () => {
     if (addressFromUrl) {
       setAddressInput(addressFromUrl);
     }
-  }, [searchParams]);
+    const latFromUrl = searchParams.get('lat');
+    const lonFromUrl = searchParams.get('lon');
+    if (latFromUrl && lonFromUrl) {
+      const lat = Number(latFromUrl);
+      const lon = Number(lonFromUrl);
+      if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+        setAddressCoords({ lat, lon });
+      }
+    }
+
+    const cityFromUrl = searchParams.get('city');
+    if (!addressFromUrl && !cityFromUrl) {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const stored = JSON.parse(raw) as {
+            address?: string;
+            city?: string;
+            lat?: number;
+            lon?: number;
+          };
+
+          if (stored.address) {
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.set('address', stored.address);
+            if (stored.lat != null && stored.lon != null) {
+              newParams.set('lat', String(stored.lat));
+              newParams.set('lon', String(stored.lon));
+            }
+            const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+            router.push(nextPath, { scroll: false });
+          } else if (stored.city) {
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.set('city', stored.city);
+            const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+            router.push(nextPath, { scroll: false });
+          }
+        }
+      } catch (error) {
+        console.error("Error reading stored location:", error);
+      }
+    }
+  }, [router, searchParams]);
 
   // Получаем реальные склады из API
   // Приоритет: если есть address - используем его, иначе city, иначе координаты
@@ -62,22 +113,188 @@ export const ChangeLocationModal = () => {
     size: 50,
     address: addressInput || undefined, // Приоритет у адреса
     city: (!addressInput && selected?.name) ? selected.name : undefined, // Если нет адреса, используем город
-    lat: (!addressInput && !selected?.name && selected?.coords.lat) ? selected.coords.lat : undefined,
-    lon: (!addressInput && !selected?.name && selected?.coords.lon) ? selected.coords.lon : undefined,
+    lat: addressCoords?.lat ?? ((!addressInput && !selected?.name && selected?.coords.lat) ? selected.coords.lat : undefined),
+    lon: addressCoords?.lon ?? ((!addressInput && !selected?.name && selected?.coords.lon) ? selected.coords.lon : undefined),
     radius: 20, // радиус 20 км
   }, {
     enabled: !!(addressInput || selected), // Запрос если есть адрес или выбран город
   });
+
+  useEffect(() => {
+    const safeAddress = (debouncedAddress ?? "").trim();
+    if (!safeAddress) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingSuggestions(true);
+    fetchAddressSuggestions(safeAddress)
+      .then((suggestions) => {
+        if (!isActive) return;
+        setAddressSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      })
+      .catch((error) => {
+        console.error("Error loading address suggestions:", error);
+        if (!isActive) return;
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingSuggestions(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [debouncedAddress]);
+
+  const normalizeAddress = (value: string) => {
+    return value
+      .split(",")
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part =>
+        part
+          .split(" ")
+          .map(word =>
+            word
+              .split("-")
+              .map(piece => piece ? piece[0].toUpperCase() + piece.slice(1) : "")
+              .join("-")
+          )
+          .join(" ")
+      )
+      .join(", ");
+  };
+
+  const formatAddressParts = (
+    city?: string | null,
+    street?: string | null,
+    house?: string | null,
+    sourceInput?: string
+  ) => {
+    const cityValue = city ? `г. ${normalizeAddress(city)}` : "";
+    const streetValue = street ? `ул. ${normalizeAddress(street)}` : "";
+    let houseValue = house ? `д. ${house}` : "";
+    let flatValue = "";
+    if (house) {
+      const flatMatch = house.match(/кв\.?\s*(\d+)/i);
+      if (flatMatch?.[1]) {
+        flatValue = `кв. ${flatMatch[1]}`;
+        houseValue = `д. ${house.replace(/кв\.?\s*\d+/i, "").trim()}`;
+      }
+    }
+    if (!flatValue && sourceInput) {
+      const inputMatch = sourceInput.match(/кв\.?\s*(\d+)/i);
+      if (inputMatch?.[1]) {
+        flatValue = `кв. ${inputMatch[1]}`;
+      }
+    }
+    return [cityValue, streetValue, houseValue, flatValue].filter(Boolean).join(", ");
+  };
+
+  const formatAddressFromInput = (input: string) => {
+    const trimmed = input.trim();
+    if (trimmed.includes("г.") || trimmed.includes("ул.") || trimmed.includes("д.") || trimmed.includes("кв.")) {
+      return trimmed;
+    }
+    const rawParts = trimmed.split(",").map(part => part.trim()).filter(Boolean);
+    if (rawParts.length >= 2) {
+      const cityPart = rawParts[0] ? `г. ${normalizeAddress(rawParts[0])}` : "";
+      const streetPart = rawParts[1] ? `ул. ${normalizeAddress(rawParts[1])}` : "";
+      const housePart = rawParts[2] ? `д. ${normalizeAddress(rawParts[2])}` : "";
+      let flatPart = "";
+      if (rawParts[3]) {
+        const flatMatch = rawParts[3].match(/(кв\.?|кв|apt\.?)\s*(.+)/i);
+        flatPart = `кв. ${normalizeAddress(flatMatch?.[2] || rawParts[3])}`;
+      }
+      const rest = rawParts.slice(4).map(part => normalizeAddress(part));
+      return [cityPart, streetPart, housePart, flatPart, ...rest].filter(Boolean).join(", ");
+    }
+
+    const tokens = input.split(" ").map(part => part.trim()).filter(Boolean);
+    if (tokens.length === 0) {
+      return "";
+    }
+    const cityToken = tokens[0];
+    const lastToken = tokens[tokens.length - 1];
+    const prevToken = tokens[tokens.length - 2];
+    const hasTwoNumbersAtEnd = /^\d+$/.test(lastToken) && /^\d+$/.test(prevToken);
+    const flatToken = hasTwoNumbersAtEnd
+      ? lastToken
+      : (prevToken && /^(кв\.?|кв|apt\.?)$/i.test(prevToken) && /^\d+$/.test(lastToken) ? lastToken : "");
+    const houseToken = hasTwoNumbersAtEnd ? prevToken : (/^\d+$/.test(lastToken) ? lastToken : "");
+    const streetTokens = tokens.slice(1, houseToken ? (flatToken ? -2 : -1) : undefined);
+    const streetToken = streetTokens.join(" ");
+
+    const cityPart = cityToken ? `г. ${normalizeAddress(cityToken)}` : "";
+    const streetPart = streetToken ? `ул. ${normalizeAddress(streetToken)}` : "";
+    const housePart = houseToken ? `д. ${normalizeAddress(houseToken)}` : "";
+    const flatPart = flatToken ? `кв. ${normalizeAddress(flatToken)}` : "";
+    return [cityPart, streetPart, housePart, flatPart].filter(Boolean).join(", ");
+  };
+
+  const handleSelectSuggestion = async (suggestion: string) => {
+    setAddressInput(normalizeAddress(suggestion));
+    setShowSuggestions(false);
+    setIsValidatingAddress(true);
+    try {
+      const result = await validateAddress(suggestion);
+      let formattedAddress = formatAddressParts(
+        result?.city || "",
+        result?.street || "",
+        result?.housenumber || "",
+        suggestion,
+      );
+      if (!formattedAddress) {
+        formattedAddress = formatAddressFromInput(suggestion);
+      }
+      if (!formattedAddress) {
+        formattedAddress = formatAddressFromInput(suggestion);
+      }
+      if (result?.latitude && result?.longitude) {
+        setAddressCoords({ lat: result.latitude, lon: result.longitude });
+      }
+      if (result?.city) {
+        const cityMatch = cities.find(
+          city => city.name.toLowerCase() === result.city?.toLowerCase()
+        );
+        if (cityMatch) {
+          setSelected(cityMatch);
+        }
+      }
+      if (formattedAddress) {
+        setAddressInput(formattedAddress);
+      }
+    } catch (error) {
+      console.error("Error validating address:", error);
+    } finally {
+      setIsValidatingAddress(false);
+    }
+  };
 
   // Преобразуем данные из API в формат WarehouseLocation (только реальные данные)
   const warehouses = useMemo(() => {
     // API возвращает { locations: [...], count: ..., page: ..., size: ... }
     // Используем только реальные данные из API, без fallback на моки
     const locations = locationsData?.locations || [];
+    const addressCity = addressInput.split(",")[0]?.trim().toLowerCase();
+    const cityFilter = addressCity || selected?.name?.toLowerCase();
     
     if (locations.length > 0) {
       return locations
         .filter(location => location.latitude && location.longitude) // Фильтруем только с координатами
+        .filter(location => {
+          if (!cityFilter) return true;
+          const address = location.address?.toLowerCase() || "";
+          const name = location.name?.toLowerCase() || "";
+          return address.includes(cityFilter) || name.includes(cityFilter);
+        })
         .map((location, index) => ({
           id: location.id || index + 1,
           name: location.name || `Склад ${index + 1}`,
@@ -93,7 +310,7 @@ export const ChangeLocationModal = () => {
     
     // Если нет данных из API - возвращаем пустой массив (не показываем моки)
     return [];
-  }, [locationsData]);
+  }, [locationsData, addressInput, selected]);
 
   useEffect(() => {
     const loadCities = async () => {
@@ -107,15 +324,28 @@ export const ChangeLocationModal = () => {
         const data: City[] = await res.json();
         setCities(data);
         
-        // Читаем address или city из URL параметров
+        // Читаем address или city из URL/локального хранилища
         const addressParam = searchParams.get('address');
         const cityParam = searchParams.get('city');
+        let storedAddress: string | undefined;
+        let storedCity: string | undefined;
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) {
+            const stored = JSON.parse(raw) as { address?: string; city?: string };
+            storedAddress = stored.address;
+            storedCity = stored.city;
+          }
+        } catch (error) {
+          console.error("Error reading stored city:", error);
+        }
         let cityToSelect: City | null = null;
         
         // Если есть address, пытаемся извлечь название города из адреса
-        if (addressParam) {
+        const addressSource = addressParam || storedAddress;
+        if (addressSource) {
           // Пытаемся найти город в начале адреса (например, "Москва, ул. ..." или "Санкт-Петербург, ул. ...")
-          const addressLower = addressParam.toLowerCase();
+          const addressLower = addressSource.toLowerCase();
           cityToSelect = data.find(city => {
             const cityNameLower = city.name.toLowerCase();
             const cityNameAltLower = city.name_alt?.toLowerCase();
@@ -131,9 +361,9 @@ export const ChangeLocationModal = () => {
         }
         
         // Если не нашли по address, ищем по city
-        if (!cityToSelect && cityParam) {
+        if (!cityToSelect && (cityParam || storedCity)) {
           // Пытаемся найти город по имени (с учетом разных вариантов написания)
-          const normalizedParam = cityParam.toLowerCase().trim();
+          const normalizedParam = (cityParam || storedCity || "").toLowerCase().trim();
           cityToSelect = data.find(city => 
             city.name.toLowerCase() === normalizedParam ||
             city.name_alt?.toLowerCase() === normalizedParam ||
@@ -149,8 +379,8 @@ export const ChangeLocationModal = () => {
           }
         }
         
-        // Если город не найден в URL, используем Москву по умолчанию
-        if (!cityToSelect) {
+        // Если город не найден и нет сохраненных данных, используем Москву по умолчанию
+        if (!cityToSelect && !addressSource && !storedCity && !cityParam) {
           cityToSelect = data.find(city => city.name === "Москва") || null;
         }
         
@@ -181,7 +411,7 @@ export const ChangeLocationModal = () => {
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="flex flex-col h-[calc(100dvh_-_100px)] md:h-[700px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden"
+        className="flex flex-col h-[calc(100dvh_-_220px)] md:h-[560px] w-screen rounded-none md:w-[900px] md:rounded-xl overflow-hidden"
         sideOffset={8}
       >
         <div className="flex flex-col p-4">
@@ -215,24 +445,108 @@ export const ChangeLocationModal = () => {
                   type="text"
                   placeholder="Санкт-Петербург, ул. Попова, д. 6"
                   value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
+                  onChange={(e) => {
+                    setAddressInput(e.target.value);
+                    setAddressCoords(null);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (addressSuggestions.length > 0) {
+                      setShowSuggestions(true);
+                    }
+                  }}
                   className="pl-10"
                 />
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow">
+                    <ul className="max-h-56 overflow-y-auto">
+                      {addressSuggestions.map((suggestion) => (
+                        <li key={suggestion}>
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              handleSelectSuggestion(suggestion);
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
+              {isLoadingSuggestions && (
+                <p className="text-xs text-gray-500">Ищем адреса...</p>
+              )}
               <Button
-                onClick={() => {
-                  if (addressInput.trim()) {
-                    const newParams = new URLSearchParams(searchParams.toString());
-                    newParams.set('address', addressInput.trim());
-                    // Удаляем city, если есть address
-                    newParams.delete('city');
-                    router.push(`/?${newParams.toString()}`, { scroll: false });
-                    setOpen(false);
+                onClick={async () => {
+                  if (!addressInput.trim()) {
+                    return;
                   }
+
+                  let coords = addressCoords;
+                  let finalAddress = normalizeAddress(addressInput.trim());
+                  if (!coords) {
+                    setIsValidatingAddress(true);
+                    try {
+                      const result = await validateAddress(addressInput.trim());
+                      let formattedAddress = formatAddressParts(
+                        result?.city || "",
+                        result?.street || "",
+                        result?.housenumber || "",
+                        addressInput.trim(),
+                      );
+                      if (!formattedAddress) {
+                        formattedAddress = formatAddressFromInput(addressInput.trim());
+                      }
+                      if (!formattedAddress) {
+                        formattedAddress = formatAddressFromInput(addressInput.trim());
+                      }
+                      if (result?.latitude && result?.longitude) {
+                        coords = { lat: result.latitude, lon: result.longitude };
+                        setAddressCoords(coords);
+                      }
+                      if (formattedAddress) {
+                        finalAddress = formattedAddress;
+                        setAddressInput(formattedAddress);
+                      }
+                    } finally {
+                      setIsValidatingAddress(false);
+                    }
+                  }
+
+                  const newParams = new URLSearchParams(searchParams.toString());
+                  newParams.set('address', finalAddress);
+                  newParams.delete('city');
+                  if (coords) {
+                    newParams.set('lat', String(coords.lat));
+                    newParams.set('lon', String(coords.lon));
+                  } else {
+                    newParams.delete('lat');
+                    newParams.delete('lon');
+                  }
+                  const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+                  router.push(nextPath, { scroll: false });
+                  try {
+                    const raw = localStorage.getItem(storageKey);
+                    const existing = raw ? JSON.parse(raw) as { city?: string } : {};
+                    localStorage.setItem(storageKey, JSON.stringify({
+                      ...existing,
+                      address: finalAddress,
+                      lat: coords?.lat,
+                      lon: coords?.lon,
+                    }));
+                  } catch (error) {
+                    console.error("Error saving address:", error);
+                  }
+                  setOpen(false);
                 }}
                 className="w-full"
               >
-                Сохранить
+                {isValidatingAddress ? "Проверяем адрес..." : "Сохранить"}
               </Button>
             </div>
             <div>
@@ -274,8 +588,21 @@ export const ChangeLocationModal = () => {
                                 newParams.set('city', citySlug);
                                 // Если есть address, удаляем его при выборе города
                                 newParams.delete('address');
+                                newParams.delete('lat');
+                                newParams.delete('lon');
                                 
-                                router.push(`/?${newParams.toString()}`, { scroll: false });
+                                const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+                                router.push(nextPath, { scroll: false });
+                                try {
+                                  const raw = localStorage.getItem(storageKey);
+                                  const existing = raw ? JSON.parse(raw) as { address?: string; lat?: number; lon?: number } : {};
+                                  localStorage.setItem(storageKey, JSON.stringify({
+                                    ...existing,
+                                    city: citySlug,
+                                  }));
+                                } catch (error) {
+                                  console.error("Error saving city:", error);
+                                }
                               }
                             }}
                             className="cursor-pointer"
@@ -358,8 +685,8 @@ export const ChangeLocationModal = () => {
           <div className="lg:col-span-2 flex-1 min-h-0">
             <div className="h-full w-full rounded-lg overflow-hidden border border-gray-200 min-h-[400px]">
               <MapPreview
-                lat={selected?.coords.lat || 55.7540471}
-                lon={selected?.coords.lon || 37.620405}
+                lat={addressCoords?.lat || selected?.coords.lat || 55.7540471}
+                lon={addressCoords?.lon || selected?.coords.lon || 37.620405}
                 locations={warehouses.map(w => ({
                   id: w.id,
                   name: w.name,
@@ -367,7 +694,7 @@ export const ChangeLocationModal = () => {
                   lon: w.longitude,
                   address: w.address
                 }))}
-                zoom={selected ? 12 : 10}
+                zoom={addressCoords ? 13 : (selected ? 12 : 10)}
               />
             </div>
           </div>
