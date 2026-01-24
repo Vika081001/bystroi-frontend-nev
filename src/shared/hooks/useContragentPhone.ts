@@ -1,6 +1,6 @@
 // shared/hooks/useContragentPhone.ts
 "use client";
-// testphone +79995079869
+
 import { useAuthStore } from "@/entities/user";
 
 export const useContragentPhone = () => {

@@ -55,13 +55,11 @@ export const useAddToFavorites = () => {
       if (!contragentPhone) {
         throw new Error("Phone is required to add to favorites");
       }
-      console.log("Adding to favorites:", { nomenclature_id, contragent_phone: contragentPhone });
       const result = await addToFavorites({
         nomenclature_id,
         contragent_phone: contragentPhone,
         ...utmParams,
       });
-      console.log("Added to favorites successfully:", result);
       return result;
     },
     onMutate: async (nomenclature_id: number) => {
@@ -105,7 +103,6 @@ export const useAddToFavorites = () => {
       return { previousQueries };
     },
     onSuccess: (data) => {
-      console.log("onSuccess: Favorite added, updating cache with server data");
       // Обновляем кеш с реальными данными с сервера (не вызываем рефетч)
       queryClient.setQueriesData<FavoritesResponse>(
         { queryKey: ["favorites", contragentPhone] },
@@ -191,7 +188,6 @@ export const useRemoveFromFavorites = () => {
     onSuccess: () => {
       // Не инвалидируем и не рефетчим - кеш уже обновлен оптимистично
       // Данные будут обновлены при следующем естественном запросе
-      console.log("onSuccess: Favorite removed, cache already updated");
     },
     onError: (error, favorite_id, context) => {
       // Откатываем при ошибке

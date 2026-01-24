@@ -5,6 +5,7 @@ import { Suspense, useEffect } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import React, { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 
 import { Filter } from "@/widgets/filter";
 import ProductsList from "@/widgets/product-list";
@@ -51,11 +52,61 @@ function ProductsContent() {
   const { currentSortType, applySort, currentParams } = useProductFilters();
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const { data: categoryTreeData } = useCategoryTree(true);
+  const searchParams = useSearchParams();
+  const sellerId = searchParams.get('seller_id');
+  const address = searchParams.get('address'); // Приоритет у address
+  const city = searchParams.get('city'); // Обратная совместимость
+  
+  // Сначала проверяем, есть ли товары у селлера
+  const sellerParams = useMemo(() => {
+    const baseParams: any = {
+      size: 1, // Проверяем только наличие товаров
+      sort_by: 'total_sold' as const,
+      sort_order: 'desc' as const,
+    };
+    
+    // Приоритет у address, если его нет - используем city
+    if (address) {
+      baseParams.address = address;
+    } else if (city) {
+      baseParams.city = city;
+    }
+    if (sellerId) {
+      baseParams.seller_id = Number(sellerId);
+    }
+    
+    return baseParams;
+  }, [address, city, sellerId]);
+  
+  const { data: sellerData } = useQuery({
+    queryKey: ["products", "seller_check", sellerParams],
+    queryFn: () => fetchProducts(sellerParams),
+    enabled: !!sellerId, // Проверяем только если есть seller_id
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  // Определяем, есть ли товары у селлера (проверяем и count, и наличие товаров в result)
+  const hasSellerProducts = sellerData && sellerData.count > 0 && sellerData.result && sellerData.result.length > 0;
+  
+  // Параметры для основного запроса
+  const finalParams = useMemo(() => {
+    const params = { ...currentParams };
+    
+    // Если у селлера есть товары - используем seller_id, иначе не используем
+    if (sellerId && hasSellerProducts) {
+      params.seller_id = Number(sellerId);
+    } else if (sellerId && hasSellerProducts === false) {
+      // Удаляем seller_id, если у селлера нет товаров
+      delete params.seller_id;
+    }
+    
+    return params;
+  }, [currentParams, sellerId, hasSellerProducts]);
 
   const { data: productsData, isLoading } = useQuery({
-    queryKey: ["products", currentParams],
+    queryKey: ["products", finalParams],
     queryFn: () => fetchProducts({
-      ...currentParams,
+      ...finalParams,
       page: 1,
       size: 100,
     }),
@@ -66,7 +117,7 @@ function ProductsContent() {
   const selectedSort = sortOptions.find(opt => opt.value === currentSortType) || sortOptions[0];
 
   const listParams: Partial<GetProductsDto> = {
-    ...currentParams,
+    ...finalParams,
     sort_by: selectedSort.sort_by,
     sort_order: selectedSort.sort_order,
   };

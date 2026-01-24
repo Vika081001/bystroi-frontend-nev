@@ -4,6 +4,7 @@
 import { ArrowRight } from "lucide-react";
 import React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/shared/ui/kit/button";
 import { useCategories, useCategoryTree } from "@/shared/hooks/useCategory";
@@ -13,6 +14,7 @@ import { transformImageUrl } from "@/shared/lib/image-utils";
 const Categories = () => {
   // Показываем только категории с актуальными товарами
   const { data: categoriesData, isLoading } = useCategoryTree(true);
+  const searchParams = useSearchParams();
 
   const softGradients = [
     "linear-gradient(135deg, #f9d8d6 0%, #f8e1e7 100%)",
@@ -121,9 +123,24 @@ const Categories = () => {
           {displayedCategories.map((category, index) => {
             const gradient = softGradients[index % softGradients.length];
 
+            // Сохраняем address (или city) и seller_id в ссылках на категории
+            const categoryUrl = new URLSearchParams();
+            categoryUrl.set('global_category_id', category.id.toString());
+            const address = searchParams.get('address'); // Приоритет у address
+            const city = searchParams.get('city'); // Обратная совместимость
+            const sellerId = searchParams.get('seller_id');
+            if (address) {
+              categoryUrl.set('address', address);
+            } else if (city) {
+              categoryUrl.set('city', city);
+            }
+            if (sellerId) {
+              categoryUrl.set('seller_id', sellerId);
+            }
+            
             return (
               <a
-                href={`/products?global_category_id=${category.id}`}
+                href={`/products?${categoryUrl.toString()}`}
                 style={{ background: gradient }}
                 className="relative group flex h-56 items-end p-4 rounded-lg overflow-hidden hover:ring-2 hover:ring-gray-200"
                 key={category.id}

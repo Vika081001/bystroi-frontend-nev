@@ -5,6 +5,7 @@ export type Location = {
   name: string;
   address?: string;
   latitude?: number;
+  longitude?: number;
   description?: string;
   distance?: number;
   avg_rating?: number;
@@ -15,4 +16,6 @@ export interface GetLocationParams extends ListParams {
   lat?: number;
   lon?: number;
   radius?: number;
+  address?: string;
+  city?: string;
 }

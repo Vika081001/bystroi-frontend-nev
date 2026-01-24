@@ -73,6 +73,9 @@ export interface GetProductsDto {
   sort_type?: SortType;
   page?: number;
   global_category_id?: number;
+  city?: string; // Обратная совместимость
+  address?: string; // Полный адрес доставки (приоритет над city)
+  seller_id?: number;
 }
 
 export interface GetProductDto {

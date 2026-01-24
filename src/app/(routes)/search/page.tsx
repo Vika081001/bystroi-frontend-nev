@@ -32,6 +32,9 @@ function SearchPageContent() {
   const minPrice = searchParams.get("min_price") || "";
   const maxPrice = searchParams.get("max_price") || "";
   const sortBy = searchParams.get("sort_by") || "relevance";
+  const address = searchParams.get("address") || ""; // Приоритет у address
+  const city = searchParams.get("city") || ""; // Обратная совместимость
+  const sellerId = searchParams.get("seller_id") || "";
 
   const [searchInput, setSearchInput] = useState(query);
   const [products, setProducts] = useState<any[]>([]);
@@ -122,6 +125,17 @@ function SearchPageContent() {
           params.append("sort_by", "created_at");
           params.append("sort_order", "desc");
           break;
+      }
+
+      // Приоритет у address, если его нет - используем city
+      if (address) {
+        params.append("address", address);
+      } else if (city) {
+        params.append("city", city);
+      }
+
+      if (sellerId) {
+        params.append("seller_id", sellerId);
       }
 
       const response = await fetch(

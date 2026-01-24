@@ -68,6 +68,15 @@ export const useProductFilters = () => {
       if (searchParams.has("global_category_id")) {
         params.global_category_id = Number(searchParams.get("global_category_id"));
       }
+      // Приоритет у address, если его нет - используем city (обратная совместимость)
+      if (searchParams.has("address")) {
+        params.address = searchParams.get("address")!;
+      } else if (searchParams.has("city")) {
+        params.city = searchParams.get("city")!;
+      }
+      if (searchParams.has("seller_id")) {
+        params.seller_id = Number(searchParams.get("seller_id"));
+      }
     } catch (error) {
       console.error("Error parsing search params:", error);
       // В случае ошибки устанавливаем сортировку по умолчанию

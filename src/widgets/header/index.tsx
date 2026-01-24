@@ -2,7 +2,7 @@
 
 import { Bell, Heart, Star, User } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import React, { Suspense } from "react";
 
 import { LoginPopup } from "@/feature/auth";
 import { CartPopup } from "@/feature/cart";
@@ -20,7 +20,9 @@ export const Header = () => {
         <div className="container">
           <div className="flex justify-between items-center py-1">
             <div className="flex gap-4">
-              <ChangeLocationModal />
+              <Suspense fallback={null}>
+                <ChangeLocationModal />
+              </Suspense>
             </div>
             <div className="flex gap-4">
               <LoginPopup

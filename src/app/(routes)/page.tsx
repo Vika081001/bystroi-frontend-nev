@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 
 import SubscribeNewsletter from "@/feature/subscribe-newsletter/ui/subscribe-newsletter";
 
@@ -11,10 +11,16 @@ const Main = () => {
   return (
     <div className="flex flex-col">
       <Poster />
-      <Categories />
-      <Recommendation />
+      <Suspense fallback={<div>Загрузка категорий...</div>}>
+        <Categories />
+      </Suspense>
+      <Suspense fallback={<div>Загрузка рекомендаций...</div>}>
+        <Recommendation />
+      </Suspense>
       <SubscribeNewsletter />
-      <Deals />
+      <Suspense fallback={<div>Загрузка предложений...</div>}>
+        <Deals />
+      </Suspense>
     </div>
   );
 };

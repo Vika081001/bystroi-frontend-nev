@@ -1,10 +1,12 @@
 "use client"
 
 import { ArrowRight } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 
 import { useProductViewHistory } from '@/shared/hooks/use-product-view-history';
-import { Product, useProducts } from '@/entities/product';
+import { Product, useProducts, fetchProducts } from '@/entities/product';
 import { ProductCard } from '@/entities/product/ui/product-card';
 import { ProductCardSkeleton } from '@/entities/product/ui/product-card-skeleton';
 import { Button } from '@/shared/ui/kit/button';
@@ -17,23 +19,77 @@ const DEFAULT_RECOMMENDATIONS = {
 };
 
 export const Recommendation = () => {
+  const searchParams = useSearchParams();
   const { getRecommendationsParams, viewedProducts } = useProductViewHistory();
   const [params, setParams] = useState<any>(DEFAULT_RECOMMENDATIONS);
   const [fallbackMode, setFallbackMode] = useState(false);
+  const sellerId = searchParams.get('seller_id');
+  const address = searchParams.get('address'); // Приоритет у address
+  const city = searchParams.get('city'); // Обратная совместимость
+  
+  // Сначала проверяем, есть ли товары у селлера
+  const sellerParams = useMemo(() => {
+    const baseParams: any = {
+      size: 1, // Проверяем только наличие товаров
+      sort_by: 'total_sold' as const,
+      sort_order: 'desc' as const,
+    };
+    
+    // Приоритет у address, если его нет - используем city
+    if (address) {
+      baseParams.address = address;
+    } else if (city) {
+      baseParams.city = city;
+    }
+    if (sellerId) {
+      baseParams.seller_id = Number(sellerId);
+    }
+    
+    return baseParams;
+  }, [address, city, sellerId]);
+  
+  const { data: sellerData } = useQuery({
+    queryKey: ["products", "seller_check", sellerParams],
+    queryFn: () => fetchProducts(sellerParams),
+    enabled: !!sellerId, // Проверяем только если есть seller_id
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  // Определяем, есть ли товары у селлера (проверяем и count, и наличие товаров в result)
+  const hasSellerProducts = sellerData && sellerData.count > 0 && sellerData.result && sellerData.result.length > 0;
  
   const { data, isLoading, refetch } = useProducts(params);
+  
+  // Объединяем параметры из URL (city, seller_id) с параметрами рекомендаций
   useEffect(() => {
     const recommendationParams = getRecommendationsParams();
    
+    let baseParams: any;
     if (recommendationParams) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setParams(recommendationParams);
+      baseParams = { ...recommendationParams };
       setFallbackMode(false);
     } else {
-      setParams(DEFAULT_RECOMMENDATIONS);
+      baseParams = { ...DEFAULT_RECOMMENDATIONS };
       setFallbackMode(false);
     }
-  }, [getRecommendationsParams, viewedProducts]);
+    
+    // Приоритет у address, если его нет - используем city
+    if (address) {
+      baseParams.address = address;
+    } else if (city) {
+      baseParams.city = city;
+    }
+    
+    // Если у селлера есть товары - используем seller_id, иначе не используем
+    if (sellerId && hasSellerProducts) {
+      baseParams.seller_id = Number(sellerId);
+    } else if (sellerId && hasSellerProducts === false) {
+      delete baseParams.seller_id;
+    }
+    
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setParams(baseParams);
+  }, [searchParams, getRecommendationsParams, viewedProducts, hasSellerProducts]);
   useEffect(() => {
     if (!isLoading && data?.result?.length === 0 && !fallbackMode) {
      
@@ -70,7 +126,7 @@ export const Recommendation = () => {
             {title}
           </h2>
           <Button variant="outline" className="hidden md:flex cursor-pointer">
-            <Link href="/products">
+            <Link href={`/products?${searchParams.toString()}`}>
               Все предложения
               <ArrowRight width={16} height={16} className='inline ml-1' />
             </Link>

@@ -19,6 +19,9 @@ export const fetchProducts = async (params: GetProductsDto) => {
       rating_to: params.rating_to,
       in_stock: params.in_stock,
       global_category_id: params.global_category_id,
+      // Приоритет у address, если его нет - используем city (обратная совместимость)
+      address: params.address || params.city,
+      seller_id: params.seller_id,
     };
     
     // Удаляем undefined значения из параметров
@@ -28,19 +31,11 @@ export const fetchProducts = async (params: GetProductsDto) => {
       }
     });
     
-    console.log("Fetching products with params:", requestParams);
-    
     const response = await axios.get(`${API_BASE_URL}/products`, {
       params: requestParams,
       headers: {
         'Content-Type': 'application/json',
       },
-    });
-    
-    console.log("Products response:", {
-      count: response.data?.count,
-      resultLength: response.data?.result?.length,
-      page: response.data?.page,
     });
     
     return response.data;

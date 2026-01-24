@@ -46,26 +46,15 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Выводим подробную информацию об ошибке только если есть данные
     const errorData = error.response?.data;
     const errorMessage = error.message || "Unknown error";
     
-    if (errorData && Object.keys(errorData).length > 0) {
-      console.error("API Error:", errorData);
-    } else if (errorMessage) {
-      console.error("API Error:", errorMessage);
-    }
-    
-    if (error.config) {
-      console.error("Request URL:", error.config.url || error.config.baseURL + error.config.url);
-      if (error.config.params && Object.keys(error.config.params).length > 0) {
-        console.error("Request Params:", error.config.params);
-      }
-      if (error.config.data && Object.keys(error.config.data).length > 0) {
-        console.error("Request Body:", error.config.data);
-      }
-      if (error.response?.status) {
-        console.error("Response Status:", error.response.status);
+    // Логируем только критические ошибки (игнорируем SSL/certificate ошибки)
+    if (!errorMessage.includes('certificate') && !errorMessage.includes('SSL') && !errorMessage.includes('TLS')) {
+      if (errorData && Object.keys(errorData).length > 0) {
+        console.error("API Error:", errorData);
+      } else if (errorMessage) {
+        console.error("API Error:", errorMessage);
       }
     }
     return Promise.reject(error);
