@@ -239,6 +239,11 @@ export const ChangeLocationModal = () => {
     return [cityPart, streetPart, housePart, flatPart].filter(Boolean).join(", ");
   };
 
+  const getInputCity = (input: string) => {
+    const firstPart = input.split(",")[0] || "";
+    return normalizeAddress(firstPart.replace(/^г\.\s*/i, "").trim()).toLowerCase();
+  };
+
   const handleSelectSuggestion = async (suggestion: string) => {
     setAddressInput(normalizeAddress(suggestion));
     setShowSuggestions(false);
@@ -493,12 +498,17 @@ export const ChangeLocationModal = () => {
                     setIsValidatingAddress(true);
                     try {
                       const result = await validateAddress(addressInput.trim());
-                      let formattedAddress = formatAddressParts(
-                        result?.city || "",
-                        result?.street || "",
-                        result?.housenumber || "",
-                        addressInput.trim(),
-                      );
+                      const inputCity = getInputCity(addressInput);
+                      const resultCity = normalizeAddress(result?.city || "").toLowerCase();
+                      const shouldTrustResult = Boolean(resultCity) && (!inputCity || inputCity === resultCity);
+                      let formattedAddress = shouldTrustResult
+                        ? formatAddressParts(
+                            result?.city || "",
+                            result?.street || "",
+                            result?.housenumber || "",
+                            addressInput.trim(),
+                          )
+                        : "";
                       if (!formattedAddress) {
                         formattedAddress = formatAddressFromInput(addressInput.trim());
                       }
