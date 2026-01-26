@@ -29,7 +29,6 @@ export const CartPopup = () => {
 
   const isLoading = isCartLoading || areItemsLoading;
   const itemCount = items?.length || 0;
-  const needsScroll = itemCount > 4;
 
   return (
      <Popover modal={isMobile}>
@@ -45,10 +44,10 @@ export const CartPopup = () => {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="flex flex-col h-[calc(100dvh_-_85px)] md:h-auto w-screen rounded-none md:w-lg md:rounded-md"
+        className="flex flex-col h-[calc(100dvh_-_85px)] md:h-auto w-screen rounded-none md:w-lg md:rounded-md overflow-hidden"
         sideOffset={8}
       >
-        <div className="flex items-center justify-between pb-4 border-b">
+        <div className="flex items-center justify-between pb-4 border-b flex-shrink-0">
           <p className="tracking-tight font-medium text-lg">Корзина</p>
           <PopoverClose asChild>
             <Button variant="outline" size="icon" className="text-gray-500">
@@ -58,11 +57,7 @@ export const CartPopup = () => {
         </div>
         
          <div 
-          className={`flex-1 pt-4 ${
-            needsScroll 
-              ? 'overflow-y-auto max-h-[500px] md:max-h-[350px]' 
-              : 'overflow-hidden'
-          }`}
+          className="flex-1 pt-4 min-h-0 overflow-y-auto"
         >
           {isLoading ? (
             <div className="space-y-4">
@@ -99,29 +94,29 @@ export const CartPopup = () => {
             </>
           )}
         </div>
-        <div className="mt-auto md:mt-0 pt-4">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="tracking-tight font-medium">Всего</p>
-                    <span className="tracking-tight font-medium">{totalPrice.toLocaleString("ru-RU")}₽</span>
-                  </div>
-                  <p className="text-sm/tight text-gray-500 tracking-tight pt-2">
-                    Стоимость доставки и налоги рассчитываются <br />
-                    при оформлении заказа.
-                  </p>
-                </div>
-              </div>
-        <div className="pt-2">
-                  <a href="/payment">
-                    <Button 
-                      size="lg" 
-                      className="w-full bg-blue-600 hover:bg-blue-70 cursor-pointer"
-                      disabled={isLoading || hasError}
-                    >
-                      Перейти к оформлению
-                    </Button>
-                  </a>
-                </div>
+        <div className="mt-auto pt-4 border-t flex-shrink-0">
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="tracking-tight font-medium">Всего</p>
+              <span className="tracking-tight font-medium">{totalPrice.toLocaleString("ru-RU")}₽</span>
+            </div>
+            <p className="text-sm/tight text-gray-500 tracking-tight pt-2">
+              Стоимость доставки и налоги рассчитываются <br />
+              при оформлении заказа.
+            </p>
+          </div>
+          <div className="pt-2">
+            <a href="/payment">
+              <Button 
+                size="lg" 
+                className="w-full bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                disabled={isLoading || hasError}
+              >
+                Перейти к оформлению
+              </Button>
+            </a>
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );
