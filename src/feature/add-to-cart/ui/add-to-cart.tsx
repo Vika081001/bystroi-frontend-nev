@@ -2,6 +2,7 @@
 
 import { Heart, Minus, Plus, Share2 } from "lucide-react";
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useAddToCart } from "@/entities/cart/model/hooks";
 import { FavoriteButton } from "@/shared/ui/kit/favorite-button";
@@ -34,6 +35,7 @@ export const AddToCart = ({
   initialName = "", 
   initialImages,
 }: Props) => {
+  const searchParams = useSearchParams();
   const [quantity, setQuantity] = useState(1);
   const [isLoadingProduct, setIsLoadingProduct] = useState(false);
   const [productData, setProductData] = useState<{
@@ -46,6 +48,10 @@ export const AddToCart = ({
   const addToCartMutation = useAddToCart();
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false);
   const dataUser = useDataUser();
+  
+  // Получаем координаты из URL
+  const lat = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
+  const lon = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
 
   const formatPrice = (price: number) => {
     return `${price?.toLocaleString('ru-RU')}₽/${unitName === null ? "шт." : unitName}`;
@@ -54,7 +60,11 @@ export const AddToCart = ({
   const loadProductDetails = async () => {
     setIsLoadingProduct(true);
     try {
-      const product = await fetchProduct({ product_id: productId });
+      const product = await fetchProduct({ 
+        product_id: productId,
+        lat,
+        lon,
+      });
       setProductData({
         price: product.price,
         name: product.name,

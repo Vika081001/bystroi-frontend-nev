@@ -83,6 +83,10 @@ export interface GetProductsDto {
 
 export interface GetProductDto {
   product_id: number;
+  lat?: number;
+  lon?: number;
+  address?: string;
+  city?: string;
 }
 
 export interface ProductFilters {

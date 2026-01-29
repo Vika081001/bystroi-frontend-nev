@@ -1,8 +1,9 @@
 "use client";
 
 import { Heart } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { useFavorites } from "@/shared/hooks/useFavorites";
 import { ProductCard } from "@/entities/product/ui/product-card";
@@ -13,13 +14,20 @@ import { LoginPopup } from "@/feature/auth";
 import { useContragentPhone } from "@/shared/hooks/useContragentPhone";
 import { Info } from "lucide-react";
 
-const FavoritesPage = () => {
+const FavoritesPageContent = () => {
   const contragentPhone = useContragentPhone();
+  const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const { data: favorites, isLoading: isFavoritesLoading } = useFavorites({ page: currentPage });
   const [productsData, setProductsData] = useState<Record<number, any>>({});
   const [loadingProducts, setLoadingProducts] = useState<Record<number, boolean>>({});
   const [allProductsLoaded, setAllProductsLoaded] = useState(false);
+  
+  // Получаем координаты и адрес из URL
+  const lat = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
+  const lon = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
+  const address = searchParams.get('address') || undefined;
+  const city = searchParams.get('city') || undefined;
   
   const isAuthenticated = !!contragentPhone;
   const [showLoginPopup, setShowLoginPopup] = useState(false);
@@ -39,7 +47,13 @@ const FavoritesPage = () => {
         try {
           const productPromises = favorites.result.map(async (favorite) => {
             try {
-              const product = await fetchProduct({ product_id: favorite.nomenclature_id });
+              const product = await fetchProduct({ 
+                product_id: favorite.nomenclature_id,
+                lat,
+                lon,
+                address,
+                city,
+              });
               return { id: favorite.nomenclature_id, data: product };
             } catch (error) {
               console.error(`Ошибка при загрузке товара ${favorite.nomenclature_id}:`, error);
@@ -200,6 +214,26 @@ const FavoritesPage = () => {
         )}
       </div>
     </div>
+  );
+};
+
+const FavoritesPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="container py-8 min-h-185 flex flex-col">
+        <div className="flex items-center justify-between mb-6 mt-3">
+          <h1 className="flex gap-2 tracking-tight text-blue-600 text-2xl font-medium">
+            <Heart className="h-6 w-6 text-red-500 fill-red-500" />
+            Избранное
+          </h1>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">Загрузка...</p>
+        </div>
+      </div>
+    }>
+      <FavoritesPageContent />
+    </Suspense>
   );
 };
 

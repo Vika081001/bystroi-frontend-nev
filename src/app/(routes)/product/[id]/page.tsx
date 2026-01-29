@@ -13,13 +13,20 @@ import { ClientProductPage } from "./client-product-page";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params, searchParams }: PageProps) {
   const { id } = await params;
   const productId = parseInt(id);
-
-  const product = await fetchProductServer(id);
+  const resolvedSearchParams = await searchParams;
+  
+  const lat = resolvedSearchParams.lat ? Number(resolvedSearchParams.lat) : undefined;
+  const lon = resolvedSearchParams.lon ? Number(resolvedSearchParams.lon) : undefined;
+  const address = resolvedSearchParams.address ? String(resolvedSearchParams.address) : undefined;
+  const city = resolvedSearchParams.city ? String(resolvedSearchParams.city) : undefined;
+  
+  const product = await fetchProductServer(id, lat, lon, address, city);
 
   if (!product || !productId) {
     return (

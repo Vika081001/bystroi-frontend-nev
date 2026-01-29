@@ -120,11 +120,18 @@ export const useCartItems = (goods: OrderGood[]) => {
   const uniqueProductIds = Array.from(
     new Set(goods.map(item => item.nomenclature_id))
   );
+  
+  // Получаем координаты и адрес из URL
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const lat = searchParams?.get('lat') ? Number(searchParams.get('lat')) : undefined;
+  const lon = searchParams?.get('lon') ? Number(searchParams.get('lon')) : undefined;
+  const address = searchParams?.get('address') || undefined;
+  const city = searchParams?.get('city') || undefined;
 
   const productQueries = useQueries({
     queries: uniqueProductIds.map((productId) => ({
-      queryKey: ["product", productId],
-      queryFn: () => fetchProduct({ product_id: productId }),
+      queryKey: ["product", productId, lat, lon, address, city],
+      queryFn: () => fetchProduct({ product_id: productId, lat, lon, address, city }),
       staleTime: 5 * 60 * 1000,
       enabled: !!productId,
     })),

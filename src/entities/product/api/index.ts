@@ -49,7 +49,23 @@ export const fetchProducts = async (params: GetProductsDto) => {
 
 export const fetchProduct = async (params: GetProductDto) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/products/${params.product_id}`);
+    const requestParams: { lat?: number; lon?: number; address?: string; city?: string } = {
+      lat: params.lat,
+      lon: params.lon,
+      address: params.address,
+      city: params.city,
+    };
+    
+    // Удаляем undefined значения из параметров
+    Object.keys(requestParams).forEach(key => {
+      if (requestParams[key as keyof typeof requestParams] === undefined) {
+        delete requestParams[key as keyof typeof requestParams];
+      }
+    });
+    
+    const response = await axios.get(`${API_BASE_URL}/products/${params.product_id}`, {
+      params: Object.keys(requestParams).length > 0 ? requestParams : undefined,
+    });
     return response.data;
   } catch (error) {
     console.error("Error fetching product:", error);
@@ -57,9 +73,24 @@ export const fetchProduct = async (params: GetProductDto) => {
   }
 };
 
-export const fetchProductServer = async (id: string) => {
+export const fetchProductServer = async (id: string, lat?: number, lon?: number, address?: string, city?: string) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const params = new URLSearchParams();
+    if (lat != null) {
+      params.append('lat', String(lat));
+    }
+    if (lon != null) {
+      params.append('lon', String(lon));
+    }
+    if (address) {
+      params.append('address', address);
+    }
+    if (city) {
+      params.append('city', city);
+    }
+    
+    const url = `${API_BASE_URL}/products/${id}${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await fetch(url, {
       cache: "force-cache",
     });
     
