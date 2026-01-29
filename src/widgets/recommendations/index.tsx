@@ -26,6 +26,8 @@ export const Recommendation = () => {
   const sellerId = searchParams.get('seller_id');
   const address = searchParams.get('address'); // Приоритет у address
   const city = searchParams.get('city'); // Обратная совместимость
+  const lat = searchParams.get('lat');
+  const lon = searchParams.get('lon');
   
   // Сначала проверяем, есть ли товары у селлера
   const sellerParams = useMemo(() => {
@@ -44,9 +46,22 @@ export const Recommendation = () => {
     if (sellerId) {
       baseParams.seller_id = Number(sellerId);
     }
+    // Координаты для выбора ближайшей цены
+    if (lat) {
+      const latNum = Number(lat);
+      if (!Number.isNaN(latNum)) {
+        baseParams.lat = latNum;
+      }
+    }
+    if (lon) {
+      const lonNum = Number(lon);
+      if (!Number.isNaN(lonNum)) {
+        baseParams.lon = lonNum;
+      }
+    }
     
     return baseParams;
-  }, [address, city, sellerId]);
+  }, [address, city, sellerId, lat, lon]);
   
   const { data: sellerData } = useQuery({
     queryKey: ["products", "seller_check", sellerParams],
@@ -87,9 +102,23 @@ export const Recommendation = () => {
       delete baseParams.seller_id;
     }
     
+    // Координаты для выбора ближайшей цены
+    if (lat) {
+      const latNum = Number(lat);
+      if (!Number.isNaN(latNum)) {
+        baseParams.lat = latNum;
+      }
+    }
+    if (lon) {
+      const lonNum = Number(lon);
+      if (!Number.isNaN(lonNum)) {
+        baseParams.lon = lonNum;
+      }
+    }
+    
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setParams(baseParams);
-  }, [searchParams, getRecommendationsParams, viewedProducts, hasSellerProducts]);
+  }, [searchParams, getRecommendationsParams, viewedProducts, hasSellerProducts, address, city, sellerId, lat, lon]);
   useEffect(() => {
     if (!isLoading && data?.result?.length === 0 && !fallbackMode) {
      

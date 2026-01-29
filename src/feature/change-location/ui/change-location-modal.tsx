@@ -392,6 +392,33 @@ export const ChangeLocationModal = () => {
         
         if (cityToSelect) {
           setSelected(cityToSelect);
+          
+          // Если есть только city в URL без координат, добавляем координаты города
+          const hasCityParam = cityParam || storedCity;
+          const hasAddressParam = addressParam || storedAddress;
+          const hasCoordsInUrl = searchParams.get('lat') && searchParams.get('lon');
+          
+          // Если есть city, но нет address и нет координат в URL, добавляем координаты города
+          if (hasCityParam && !hasAddressParam && !hasCoordsInUrl && cityToSelect.coords) {
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.set('lat', String(cityToSelect.coords.lat));
+            newParams.set('lon', String(cityToSelect.coords.lon));
+            const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+            router.push(nextPath, { scroll: false });
+            
+            // Обновляем localStorage с координатами
+            try {
+              const raw = localStorage.getItem(storageKey);
+              const existing = raw ? JSON.parse(raw) as { city?: string; lat?: number; lon?: number } : {};
+              localStorage.setItem(storageKey, JSON.stringify({
+                ...existing,
+                lat: cityToSelect.coords.lat,
+                lon: cityToSelect.coords.lon,
+              }));
+            } catch (error) {
+              console.error("Error saving city coordinates:", error);
+            }
+          }
         }
       } catch (error) {
         console.error("Error loading cities:", error);
@@ -399,7 +426,7 @@ export const ChangeLocationModal = () => {
     };
 
     loadCities();
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   return (
     <Popover modal={isMobile}>
@@ -550,6 +577,12 @@ export const ChangeLocationModal = () => {
                     nextSelected = cityFromAddress;
                     setSelected(cityFromAddress);
                   }
+                  
+                  // Fallback: если координаты не получены из валидации, используем координаты города
+                  if (!coords && nextSelected?.coords) {
+                    coords = { lat: nextSelected.coords.lat, lon: nextSelected.coords.lon };
+                    setAddressCoords(coords);
+                  }
 
                   const newParams = new URLSearchParams(searchParams.toString());
                   newParams.set('address', finalAddress);
@@ -558,10 +591,12 @@ export const ChangeLocationModal = () => {
                     const citySlug = nextSelected.name_en?.toLowerCase() || nextSelected.name.toLowerCase();
                     newParams.set('city', citySlug);
                   }
+                  // Всегда сохраняем координаты, если они есть (из валидации или из города)
                   if (coords) {
                     newParams.set('lat', String(coords.lat));
                     newParams.set('lon', String(coords.lon));
                   } else {
+                    // Удаляем координаты только если их действительно нет
                     newParams.delete('lat');
                     newParams.delete('lon');
                   }
@@ -630,8 +665,14 @@ export const ChangeLocationModal = () => {
                                 newParams.set('city', citySlug);
                                 // Если есть address, удаляем его при выборе города
                                 newParams.delete('address');
-                                newParams.delete('lat');
-                                newParams.delete('lon');
+                                // Сохраняем координаты города для выбора ближайшей цены
+                                if (newCity.coords) {
+                                  newParams.set('lat', String(newCity.coords.lat));
+                                  newParams.set('lon', String(newCity.coords.lon));
+                                } else {
+                                  newParams.delete('lat');
+                                  newParams.delete('lon');
+                                }
                                 
                                 const nextPath = `${window.location.pathname}?${newParams.toString()}`;
                                 router.push(nextPath, { scroll: false });
@@ -642,8 +683,9 @@ export const ChangeLocationModal = () => {
                                     ...existing,
                                     city: citySlug,
                                     address: undefined,
-                                    lat: undefined,
-                                    lon: undefined,
+                                    // Сохраняем координаты города
+                                    lat: newCity.coords?.lat,
+                                    lon: newCity.coords?.lon,
                                   }));
                                 } catch (error) {
                                   console.error("Error saving city:", error);
@@ -759,11 +801,11 @@ export const ChangeLocationModal = () => {
                 <Button variant="outline">Отмена</Button>
               </PopoverClose>
               {!addressInput.trim() && (
-                <PopoverClose asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    Сохранить город
-                  </Button>
-                </PopoverClose>
+              <PopoverClose asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  Сохранить город
+                </Button>
+              </PopoverClose>
               )}
             </div>
           </div>

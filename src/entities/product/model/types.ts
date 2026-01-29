@@ -12,6 +12,9 @@ export type Product = {
   manufacturer_name?: string;
   price: number;
   price_type?: string;
+  price_address?: string;
+  price_latitude?: number;
+  price_longitude?: number;
   created_at?: string;
   updated_at?: string;
   images: string[];

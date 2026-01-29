@@ -22,6 +22,8 @@ export const fetchProducts = async (params: GetProductsDto) => {
       // Приоритет у address, если его нет - используем city (обратная совместимость)
       address: params.address || params.city,
       seller_id: params.seller_id,
+      lat: params.lat,
+      lon: params.lon,
     };
     
     // Удаляем undefined значения из параметров

@@ -17,6 +17,8 @@ export const Deals = () => {
   const sellerId = searchParams.get('seller_id');
   const address = searchParams.get('address'); // Приоритет у address
   const city = searchParams.get('city'); // Обратная совместимость
+  const lat = searchParams.get('lat');
+  const lon = searchParams.get('lon');
   
   // Сначала проверяем, есть ли товары у селлера
   const sellerParams = useMemo(() => {
@@ -35,9 +37,22 @@ export const Deals = () => {
     if (sellerId) {
       baseParams.seller_id = Number(sellerId);
     }
+    // Координаты для выбора ближайшей цены
+    if (lat) {
+      const latNum = Number(lat);
+      if (!Number.isNaN(latNum)) {
+        baseParams.lat = latNum;
+      }
+    }
+    if (lon) {
+      const lonNum = Number(lon);
+      if (!Number.isNaN(lonNum)) {
+        baseParams.lon = lonNum;
+      }
+    }
     
     return baseParams;
-  }, [address, city, sellerId]);
+  }, [address, city, sellerId, lat, lon]);
   
   const { data: sellerData } = useQuery({
     queryKey: ["products", "seller_check", sellerParams],
@@ -53,10 +68,10 @@ export const Deals = () => {
   // Параметры для основного запроса
   const params = useMemo(() => {
     const baseParams: any = {
-      size: 20,
-      sort_by: 'total_sold' as const,
-      sort_order: 'desc' as const,
-    };
+    size: 20,
+    sort_by: 'total_sold' as const,
+    sort_order: 'desc' as const,
+  };
     
     // Приоритет у address, если его нет - используем city
     if (address) {
@@ -70,8 +85,22 @@ export const Deals = () => {
       baseParams.seller_id = Number(sellerId);
     }
     
+    // Координаты для выбора ближайшей цены
+    if (lat) {
+      const latNum = Number(lat);
+      if (!Number.isNaN(latNum)) {
+        baseParams.lat = latNum;
+      }
+    }
+    if (lon) {
+      const lonNum = Number(lon);
+      if (!Number.isNaN(lonNum)) {
+        baseParams.lon = lonNum;
+      }
+    }
+    
     return baseParams;
-  }, [searchParams, hasSellerProducts]);
+  }, [searchParams, hasSellerProducts, address, city, sellerId, lat, lon]);
 
   const { data, isLoading } = useProducts(params);
 

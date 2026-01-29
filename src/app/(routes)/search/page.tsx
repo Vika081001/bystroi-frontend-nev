@@ -35,6 +35,8 @@ function SearchPageContent() {
   const address = searchParams.get("address") || ""; // Приоритет у address
   const city = searchParams.get("city") || ""; // Обратная совместимость
   const sellerId = searchParams.get("seller_id") || "";
+  const lat = searchParams.get("lat");
+  const lon = searchParams.get("lon");
 
   const [searchInput, setSearchInput] = useState(query);
   const [products, setProducts] = useState<any[]>([]);
@@ -136,6 +138,14 @@ function SearchPageContent() {
 
       if (sellerId) {
         params.append("seller_id", sellerId);
+      }
+
+      // Координаты для выбора ближайшей цены
+      if (lat) {
+        params.append("lat", lat);
+      }
+      if (lon) {
+        params.append("lon", lon);
       }
 
       const response = await fetch(

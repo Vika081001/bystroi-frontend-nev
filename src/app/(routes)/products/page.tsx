@@ -56,6 +56,8 @@ function ProductsContent() {
   const sellerId = searchParams.get('seller_id');
   const address = searchParams.get('address'); // Приоритет у address
   const city = searchParams.get('city'); // Обратная совместимость
+  const lat = searchParams.get('lat');
+  const lon = searchParams.get('lon');
   
   // Сначала проверяем, есть ли товары у селлера
   const sellerParams = useMemo(() => {
@@ -74,9 +76,22 @@ function ProductsContent() {
     if (sellerId) {
       baseParams.seller_id = Number(sellerId);
     }
+    // Координаты для выбора ближайшей цены
+    if (lat) {
+      const latNum = Number(lat);
+      if (!Number.isNaN(latNum)) {
+        baseParams.lat = latNum;
+      }
+    }
+    if (lon) {
+      const lonNum = Number(lon);
+      if (!Number.isNaN(lonNum)) {
+        baseParams.lon = lonNum;
+      }
+    }
     
     return baseParams;
-  }, [address, city, sellerId]);
+  }, [address, city, sellerId, lat, lon]);
   
   const { data: sellerData } = useQuery({
     queryKey: ["products", "seller_check", sellerParams],

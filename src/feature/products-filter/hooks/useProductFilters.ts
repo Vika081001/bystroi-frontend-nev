@@ -77,6 +77,19 @@ export const useProductFilters = () => {
       if (searchParams.has("seller_id")) {
         params.seller_id = Number(searchParams.get("seller_id"));
       }
+      // Координаты для выбора ближайшей цены
+      if (searchParams.has("lat")) {
+        const lat = Number(searchParams.get("lat"));
+        if (!Number.isNaN(lat)) {
+          params.lat = lat;
+        }
+      }
+      if (searchParams.has("lon")) {
+        const lon = Number(searchParams.get("lon"));
+        if (!Number.isNaN(lon)) {
+          params.lon = lon;
+        }
+      }
     } catch (error) {
       console.error("Error parsing search params:", error);
       // В случае ошибки устанавливаем сортировку по умолчанию
