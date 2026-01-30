@@ -28,6 +28,7 @@ import {
 } from "@/shared/ui/kit/popover";
 import { MapPreview } from "@/shared/ui/map-preview";
 import { useLocations } from "@/shared/hooks/useLocations";
+import { fetchDetectedCity } from "@/entities/product/api";
 
 interface WarehouseLocation {
   id: number;
@@ -53,6 +54,8 @@ export const ChangeLocationModal = () => {
   const [suppressSuggestionsOnce, setSuppressSuggestionsOnce] = useState(false);
   const [isAddressFocused, setIsAddressFocused] = useState(false);
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [detectedCity, setDetectedCity] = useState<{ city?: string; lat?: number; lon?: number } | null>(null);
+  const [isDetectedCityAuto, setIsDetectedCityAuto] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const storageKey = "bystroi_location";
@@ -288,6 +291,7 @@ export const ChangeLocationModal = () => {
         );
         if (cityMatch) {
           setSelected(cityMatch);
+          setIsDetectedCityAuto(false);
         }
       }
     } catch (error) {
@@ -385,11 +389,104 @@ export const ChangeLocationModal = () => {
           }
         }
         
-        // Если город не найден и нет сохраненных данных - не устанавливаем город по умолчанию
-        // Бэкенд автоматически определит город по IP адресу клиента
+        // Если город не найден и нет сохраненных данных - получаем автоматически определенный город
+        if (!cityToSelect && !addressParam && !cityParam && !storedAddress && !storedCity) {
+          try {
+            const detected = await fetchDetectedCity();
+            if (detected?.city) {
+              setDetectedCity(detected);
+              setIsDetectedCityAuto(true);
+              
+              // Пытаемся найти город в списке городов
+              const normalizedDetectedCity = detected.city.toLowerCase().trim();
+              const foundCity = data.find(city => 
+                city.name.toLowerCase() === normalizedDetectedCity ||
+                city.name_alt?.toLowerCase() === normalizedDetectedCity ||
+                city.name_en?.toLowerCase() === normalizedDetectedCity
+              );
+              
+              if (foundCity) {
+                setSelected(foundCity);
+              } else {
+                // Если город не найден в списке, создаем временный объект города
+                setSelected({
+                  id: 'detected',
+                  guid: 'detected',
+                  contentType: 'city' as const,
+                  label: detected.city,
+                  name: detected.city,
+                  name_alt: detected.city,
+                  name_en: detected.city,
+                  namecase: {
+                    nominative: detected.city,
+                    genitive: detected.city,
+                    dative: detected.city,
+                    accusative: detected.city,
+                    ablative: detected.city,
+                    prepositional: detected.city,
+                  },
+                  coords: {
+                    lat: detected.lat || 0,
+                    lon: detected.lon || 0,
+                  },
+                  region: {
+                    name: '',
+                    label: '',
+                    type: '',
+                    typeShort: '',
+                    contentType: 'region' as const,
+                    id: '',
+                  },
+                  timezone: {
+                    tzid: '',
+                    abbreviation: '',
+                    utcOffset: '',
+                    mskOffset: '',
+                  },
+                  type: '',
+                  typeShort: '',
+                  okato: '',
+                  oktmo: '',
+                  zip: '',
+                  population: 0,
+                  yearCityStatus: 0,
+                  yearFounded: 0,
+                  isCapital: false,
+                  isDualName: false,
+                });
+              }
+              
+              // Если есть координаты, добавляем их в URL
+              if (detected.lat && detected.lon) {
+                const newParams = new URLSearchParams(searchParams.toString());
+                newParams.set('lat', String(detected.lat));
+                newParams.set('lon', String(detected.lon));
+                if (detected.city) {
+                  newParams.set('city', detected.city);
+                }
+                const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+                router.push(nextPath, { scroll: false });
+                
+                // Сохраняем в localStorage
+                try {
+                  localStorage.setItem(storageKey, JSON.stringify({
+                    city: detected.city,
+                    lat: detected.lat,
+                    lon: detected.lon,
+                  }));
+                } catch (error) {
+                  console.error("Error saving detected city:", error);
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching detected city:", error);
+          }
+        }
         
         if (cityToSelect) {
           setSelected(cityToSelect);
+          setIsDetectedCityAuto(false);
           
           // Если есть только city в URL без координат, добавляем координаты города
           const hasCityParam = cityParam || storedCity;
@@ -435,7 +532,11 @@ export const ChangeLocationModal = () => {
         >
           <div className="flex items-center gap-2 min-w-0 w-full">
             <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <span className="truncate min-w-0">{searchParams.get('address') || selected?.name || "Укажите адрес доставки"}</span>
+            <span className="truncate min-w-0">
+              {searchParams.get('address') || 
+               (selected?.name && isDetectedCityAuto ? `${selected.name} (автоматически)` : selected?.name) || 
+               "Укажите адрес доставки"}
+            </span>
             <ChevronsUpDown className="w-3 h-3 ml-1 opacity-50 flex-shrink-0" />
           </div>
         </Button>
@@ -564,6 +665,7 @@ export const ChangeLocationModal = () => {
                         );
                         if (cityMatch) {
                           setSelected(cityMatch);
+                          setIsDetectedCityAuto(false);
                         }
                       }
                     } finally {
@@ -574,6 +676,7 @@ export const ChangeLocationModal = () => {
                   if (cityFromAddress) {
                     nextSelected = cityFromAddress;
                     setSelected(cityFromAddress);
+                    setIsDetectedCityAuto(false);
                   }
                   
                   // Fallback: если координаты не получены из валидации, используем координаты города
@@ -650,6 +753,7 @@ export const ChangeLocationModal = () => {
                             onSelect={(currentValue) => {
                               const newCity = currentValue === selected?.name ? null : city;
                               setSelected(newCity);
+                              setIsDetectedCityAuto(false);
                               setOpen(false);
                               // Clear address/coords so city selection takes effect immediately
                               setAddressInput("");
@@ -790,7 +894,11 @@ export const ChangeLocationModal = () => {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-0.5">
             <div className="text-[13px] text-gray-600 max-w-[260px] w-full text-center sm:text-left leading-tight">
               <p className="font-medium leading-tight">
-                {selected?.name ? `Вы выбрали: ${selected.name}` : "Город будет определен автоматически"}
+                {selected?.name 
+                  ? (isDetectedCityAuto 
+                      ? `Определен автоматически: ${selected.name}` 
+                      : `Вы выбрали: ${selected.name}`)
+                  : "Город будет определен автоматически"}
               </p>
               <p className="text-[11px] leading-tight">
                 Доставка: 1-3 дня • Самовывоз: 1-2 часа

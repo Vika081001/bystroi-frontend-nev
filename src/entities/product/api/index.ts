@@ -47,6 +47,53 @@ export const fetchProducts = async (params: GetProductsDto) => {
   }
 };
 
+// Функция для получения автоматически определенного города из заголовков ответа
+export const getDetectedCityFromResponse = (response: any): { city?: string; lat?: number; lon?: number } | null => {
+  if (!response) return null;
+  
+  // Axios возвращает headers в response.headers
+  const headers = response.headers || {};
+  
+  // Проверяем различные варианты названий заголовков (case-insensitive)
+  const city = headers['x-detected-city'] || 
+               headers['X-Detected-City'] || 
+               headers['x-detected-city']?.toLowerCase() ||
+               (typeof headers.get === 'function' ? headers.get('x-detected-city') : null);
+  const lat = headers['x-detected-lat'] || 
+              headers['X-Detected-Lat'] ||
+              (typeof headers.get === 'function' ? headers.get('x-detected-lat') : null);
+  const lon = headers['x-detected-lon'] || 
+              headers['X-Detected-Lon'] ||
+              (typeof headers.get === 'function' ? headers.get('x-detected-lon') : null);
+  
+  if (city) {
+    return {
+      city: typeof city === 'string' ? city : String(city),
+      lat: lat ? Number(lat) : undefined,
+      lon: lon ? Number(lon) : undefined,
+    };
+  }
+  
+  return null;
+};
+
+// Функция для получения автоматически определенного города (делает запрос без параметров локации)
+export const fetchDetectedCity = async (): Promise<{ city?: string; lat?: number; lon?: number } | null> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/products`, {
+      params: { size: 1 },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    return getDetectedCityFromResponse(response);
+  } catch (error) {
+    console.error("Error fetching detected city:", error);
+    return null;
+  }
+};
+
 export const fetchProduct = async (params: GetProductDto) => {
   try {
     const requestParams: { lat?: number; lon?: number; address?: string; city?: string } = {
