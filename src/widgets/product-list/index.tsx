@@ -102,7 +102,7 @@ const ProductsList: React.FC<ProductsListProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {data?.pages.map((page) => (
           <React.Fragment key={page.page}>
-            {page.result.map((product: Product) => (
+            {page?.result?.map((product: Product) => (
               <ProductCard {...product} key={product.id} />
             ))}
           </React.Fragment>

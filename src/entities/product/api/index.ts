@@ -55,10 +55,9 @@ export const getDetectedCityFromResponse = (response: any): { city?: string; lat
   const headers = response.headers || {};
   
   // Проверяем различные варианты названий заголовков (case-insensitive)
-  const city = headers['x-detected-city'] || 
-               headers['X-Detected-City'] || 
-               headers['x-detected-city']?.toLowerCase() ||
-               (typeof headers.get === 'function' ? headers.get('x-detected-city') : null);
+  const cityHeader = headers['x-detected-city'] || 
+                     headers['X-Detected-City'] ||
+                     (typeof headers.get === 'function' ? headers.get('x-detected-city') : null);
   const lat = headers['x-detected-lat'] || 
               headers['X-Detected-Lat'] ||
               (typeof headers.get === 'function' ? headers.get('x-detected-lat') : null);
@@ -66,12 +65,24 @@ export const getDetectedCityFromResponse = (response: any): { city?: string; lat
               headers['X-Detected-Lon'] ||
               (typeof headers.get === 'function' ? headers.get('x-detected-lon') : null);
   
-  if (city) {
-    return {
-      city: typeof city === 'string' ? city : String(city),
-      lat: lat ? Number(lat) : undefined,
-      lon: lon ? Number(lon) : undefined,
-    };
+  if (cityHeader) {
+    try {
+      // Декодируем значение города (бэкенд кодирует через quote())
+      const city = decodeURIComponent(String(cityHeader));
+      return {
+        city: city,
+        lat: lat ? Number(lat) : undefined,
+        lon: lon ? Number(lon) : undefined,
+      };
+    } catch (error) {
+      // Если декодирование не удалось, используем исходное значение
+      console.warn("Failed to decode city header:", error);
+      return {
+        city: String(cityHeader),
+        lat: lat ? Number(lat) : undefined,
+        lon: lon ? Number(lon) : undefined,
+      };
+    }
   }
   
   return null;

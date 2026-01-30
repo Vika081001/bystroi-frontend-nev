@@ -124,9 +124,9 @@ export const Deals = () => {
               <ProductCardSkeleton key={index} />
             ))
           ) : (
-            data.result.slice(0, 12).map((product: Product, index: number) => (
+            data?.result?.slice(0, 12).map((product: Product, index: number) => (
               <ProductCard key={product.id} {...product} />
-            ))
+            )) || []
           )}
         </div>
         <div className="md:hidden pt-4">
