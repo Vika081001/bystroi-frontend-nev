@@ -124,23 +124,69 @@ export const Recommendation = () => {
      
       const recommendationParams = getRecommendationsParams();
       if (recommendationParams?.category) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setParams({
+        const fallbackParams: any = {
           category: recommendationParams.category,
           size: 20,
           sort_by: 'total_sold' as const,
           sort_order: 'desc' as const,
-        });
+        };
+        
+        // Приоритет у address, если его нет - используем city
+        if (address) {
+          fallbackParams.address = address;
+        } else if (city) {
+          fallbackParams.city = city;
+        }
+        
+        // Координаты для выбора ближайшей цены
+        if (lat) {
+          const latNum = Number(lat);
+          if (!Number.isNaN(latNum)) {
+            fallbackParams.lat = latNum;
+          }
+        }
+        if (lon) {
+          const lonNum = Number(lon);
+          if (!Number.isNaN(lonNum)) {
+            fallbackParams.lon = lonNum;
+          }
+        }
+        
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setParams(fallbackParams);
         setFallbackMode(true);
       }
     }
-  }, [data, isLoading, fallbackMode, getRecommendationsParams]);
+  }, [data, isLoading, fallbackMode, getRecommendationsParams, address, city, lat, lon]);
   useEffect(() => {
     if (!isLoading && data?.result?.length === 0 && fallbackMode) {
+      const finalParams: any = { ...DEFAULT_RECOMMENDATIONS };
+      
+      // Приоритет у address, если его нет - используем city
+      if (address) {
+        finalParams.address = address;
+      } else if (city) {
+        finalParams.city = city;
+      }
+      
+      // Координаты для выбора ближайшей цены
+      if (lat) {
+        const latNum = Number(lat);
+        if (!Number.isNaN(latNum)) {
+          finalParams.lat = latNum;
+        }
+      }
+      if (lon) {
+        const lonNum = Number(lon);
+        if (!Number.isNaN(lonNum)) {
+          finalParams.lon = lonNum;
+        }
+      }
+      
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setParams(DEFAULT_RECOMMENDATIONS);
+      setParams(finalParams);
     }
-  }, [data, isLoading, fallbackMode]);
+  }, [data, isLoading, fallbackMode, address, city, lat, lon]);
   if (!data?.result?.length && !isLoading) {
     return null;
   }
