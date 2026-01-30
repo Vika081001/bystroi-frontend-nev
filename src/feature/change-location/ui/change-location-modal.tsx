@@ -385,10 +385,8 @@ export const ChangeLocationModal = () => {
           }
         }
         
-        // Если город не найден и нет сохраненных данных, используем Москву по умолчанию
-        if (!cityToSelect && !addressSource && !storedCity && !cityParam) {
-          cityToSelect = data.find(city => city.name === "Москва") || null;
-        }
+        // Если город не найден и нет сохраненных данных - не устанавливаем город по умолчанию
+        // Бэкенд автоматически определит город по IP адресу клиента
         
         if (cityToSelect) {
           setSelected(cityToSelect);
@@ -791,7 +789,9 @@ export const ChangeLocationModal = () => {
         <div className="border-t p-1 pt-0.5 bg-white pb-[calc(16px+env(safe-area-inset-bottom))]">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-0.5">
             <div className="text-[13px] text-gray-600 max-w-[260px] w-full text-center sm:text-left leading-tight">
-              <p className="font-medium leading-tight">Вы выбрали: {selected?.name || "Москва"}</p>
+              <p className="font-medium leading-tight">
+                {selected?.name ? `Вы выбрали: ${selected.name}` : "Город будет определен автоматически"}
+              </p>
               <p className="text-[11px] leading-tight">
                 Доставка: 1-3 дня • Самовывоз: 1-2 часа
               </p>
