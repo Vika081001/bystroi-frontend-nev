@@ -98,6 +98,8 @@ export const fetchProducts = async (params: GetProductsDto) => {
       console.log('[DEBUG] Автоматически определенный город из IP:', detectedCity);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('detected_city', JSON.stringify(detectedCity));
+        // Отправляем кастомное событие для обновления UI
+        window.dispatchEvent(new CustomEvent('detectedCityUpdated'));
       }
     }
     

@@ -103,6 +103,84 @@ export const ChangeLocationModal = () => {
       setDetectedCity(null);
     }
   }, [router, searchParams]);
+  
+  // Слушаем изменения в sessionStorage для обновления detectedCity в реальном времени
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const checkDetectedCity = () => {
+      const cityFromUrl = searchParams.get('city');
+      const addressFromUrl = searchParams.get('address');
+      
+      // Проверяем только если нет параметров в URL
+      if (!cityFromUrl && !addressFromUrl) {
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            setDetectedCity(parsed);
+          } else {
+            setDetectedCity(null);
+          }
+        } catch (e) {
+          setDetectedCity(null);
+        }
+      } else {
+        setDetectedCity(null);
+      }
+    };
+    
+    // Проверяем сразу
+    checkDetectedCity();
+    
+    // Слушаем кастомное событие, которое срабатывает при сохранении в sessionStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'detected_city') {
+        checkDetectedCity();
+      }
+    };
+    
+    const handleDetectedCityUpdated = () => {
+      checkDetectedCity();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('detectedCityUpdated', handleDetectedCityUpdated as EventListener);
+    
+    // Также периодически проверяем (на случай, если событие не сработало)
+    const interval = setInterval(checkDetectedCity, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('detectedCityUpdated', handleDetectedCityUpdated as EventListener);
+      clearInterval(interval);
+    };
+  }, [searchParams]);
+  
+  // Автоматически выбираем город в селекте, если он определен по IP
+  useEffect(() => {
+    const cityFromUrl = searchParams.get('city');
+    const addressFromUrl = searchParams.get('address');
+    
+    // Выбираем город только если:
+    // 1. Нет параметров в URL (город не выбран вручную)
+    // 2. Есть detectedCity (город определен по IP)
+    // 3. Есть список городов (cities загружен)
+    // 4. Город еще не выбран (selected === null)
+    if (!cityFromUrl && !addressFromUrl && detectedCity && cities.length > 0 && !selected) {
+      // Ищем город в списке по имени
+      const cityMatch = cities.find(city => 
+        city.name.toLowerCase() === detectedCity.city.toLowerCase() ||
+        city.name_alt?.toLowerCase() === detectedCity.city.toLowerCase() ||
+        city.name_en?.toLowerCase() === detectedCity.city.toLowerCase()
+      );
+      
+      if (cityMatch) {
+        setSelected(cityMatch);
+        console.log('[DEBUG] Автоматически выбран город в селекте:', cityMatch.name);
+      }
+    }
+  }, [detectedCity, cities, selected, searchParams]);
 
   // Получаем реальные склады из API
   // Приоритет: если есть address - используем его, иначе city, иначе координаты
