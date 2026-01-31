@@ -68,10 +68,11 @@ export const useProductFilters = () => {
       if (searchParams.has("global_category_id")) {
         params.global_category_id = Number(searchParams.get("global_category_id"));
       }
-      // Приоритет у address, если его нет - используем city (обратная совместимость)
+      // Приоритет у address, если его нет - используем city (как с адресом)
       if (searchParams.has("address")) {
         params.address = searchParams.get("address")!;
       } else if (searchParams.has("city")) {
+        // Передаем полное название города напрямую из URL (как с адресом)
         params.city = searchParams.get("city")!;
       }
       if (searchParams.has("seller_id")) {

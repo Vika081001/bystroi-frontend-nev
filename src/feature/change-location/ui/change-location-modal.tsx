@@ -28,7 +28,6 @@ import {
 } from "@/shared/ui/kit/popover";
 import { MapPreview } from "@/shared/ui/map-preview";
 import { useLocations } from "@/shared/hooks/useLocations";
-import { fetchDetectedCity } from "@/entities/product/api";
 
 interface WarehouseLocation {
   id: number;
@@ -54,8 +53,7 @@ export const ChangeLocationModal = () => {
   const [suppressSuggestionsOnce, setSuppressSuggestionsOnce] = useState(false);
   const [isAddressFocused, setIsAddressFocused] = useState(false);
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [detectedCity, setDetectedCity] = useState<{ city?: string; lat?: number; lon?: number } | null>(null);
-  const [isDetectedCityAuto, setIsDetectedCityAuto] = useState(false);
+  const [detectedCity, setDetectedCity] = useState<{ city: string; lat: number; lon: number } | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const storageKey = "bystroi_location";
@@ -75,39 +73,34 @@ export const ChangeLocationModal = () => {
       if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
         setAddressCoords({ lat, lon });
       }
+    } else {
+      // Если координат нет в URL - очищаем state
+      // Это предотвращает их автоматическое восстановление
+      setAddressCoords(null);
     }
 
     const cityFromUrl = searchParams.get('city');
-    if (!addressFromUrl && !cityFromUrl) {
+    
+    // НЕ восстанавливаем параметры из localStorage автоматически
+    // Параметры добавляются в URL только когда пользователь явно выбирает город или адрес
+    // Это позволяет бэкенду автоматически определить адрес по IP, когда параметров нет
+    // localStorage используется только для сохранения выбора пользователя, но не для автоматического восстановления
+    
+    // Проверяем, есть ли автоматически определенный город в sessionStorage
+    if (typeof window !== 'undefined' && !cityFromUrl && !addressFromUrl) {
       try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-          const stored = JSON.parse(raw) as {
-            address?: string;
-            city?: string;
-            lat?: number;
-            lon?: number;
-          };
-
-          if (stored.address) {
-            const newParams = new URLSearchParams(searchParams.toString());
-            newParams.set('address', stored.address);
-            if (stored.lat != null && stored.lon != null) {
-              newParams.set('lat', String(stored.lat));
-              newParams.set('lon', String(stored.lon));
-            }
-            const nextPath = `${window.location.pathname}?${newParams.toString()}`;
-            router.push(nextPath, { scroll: false });
-          } else if (stored.city) {
-            const newParams = new URLSearchParams(searchParams.toString());
-            newParams.set('city', stored.city);
-            const nextPath = `${window.location.pathname}?${newParams.toString()}`;
-            router.push(nextPath, { scroll: false });
-          }
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          setDetectedCity(parsed);
+        } else {
+          setDetectedCity(null);
         }
-      } catch (error) {
-        console.error("Error reading stored location:", error);
+      } catch (e) {
+        setDetectedCity(null);
       }
+    } else {
+      setDetectedCity(null);
     }
   }, [router, searchParams]);
 
@@ -291,7 +284,6 @@ export const ChangeLocationModal = () => {
         );
         if (cityMatch) {
           setSelected(cityMatch);
-          setIsDetectedCityAuto(false);
         }
       }
     } catch (error) {
@@ -370,150 +362,36 @@ export const ChangeLocationModal = () => {
           cityToSelect = findCityInAddress(addressSource, data);
         }
         
-        // Если не нашли по address, ищем по city
-        if (!cityToSelect && (cityParam || storedCity)) {
-          // Пытаемся найти город по имени (с учетом разных вариантов написания)
-          const normalizedParam = (cityParam || storedCity || "").toLowerCase().trim();
+        // Если не нашли по address, ищем по city ТОЛЬКО если он есть в URL
+        // НЕ восстанавливаем город из localStorage, чтобы бэкенд мог определить его автоматически
+        if (!cityToSelect && cityParam) {
+          // Пытаемся найти город по имени (теперь в URL хранится полное название)
+          const cityName = cityParam;
           cityToSelect = data.find(city => 
-            city.name.toLowerCase() === normalizedParam ||
-            city.name_alt?.toLowerCase() === normalizedParam ||
-            city.name_en?.toLowerCase() === normalizedParam
+            city.name === cityName ||
+            city.name_alt === cityName ||
+            city.name_en?.toLowerCase() === cityName.toLowerCase()
           ) || null;
           
-          // Если не нашли точное совпадение, пытаемся найти по частичному совпадению
+          // Если не нашли точное совпадение, пытаемся найти по частичному совпадению (для обратной совместимости со slug)
           if (!cityToSelect) {
+            const normalizedParam = cityName.toLowerCase().trim();
             cityToSelect = data.find(city => 
+              city.name.toLowerCase() === normalizedParam ||
+              city.name_alt?.toLowerCase() === normalizedParam ||
+              city.name_en?.toLowerCase() === normalizedParam ||
               city.name.toLowerCase().includes(normalizedParam) ||
               normalizedParam.includes(city.name.toLowerCase())
             ) || null;
           }
         }
         
-        // Если город не найден и нет сохраненных данных - получаем автоматически определенный город
-        if (!cityToSelect && !addressParam && !cityParam && !storedAddress && !storedCity) {
-          try {
-            const detected = await fetchDetectedCity();
-            if (detected?.city) {
-              setDetectedCity(detected);
-              setIsDetectedCityAuto(true);
-              
-              // Пытаемся найти город в списке городов
-              const normalizedDetectedCity = detected.city.toLowerCase().trim();
-              const foundCity = data.find(city => 
-                city.name.toLowerCase() === normalizedDetectedCity ||
-                city.name_alt?.toLowerCase() === normalizedDetectedCity ||
-                city.name_en?.toLowerCase() === normalizedDetectedCity
-              );
-              
-              if (foundCity) {
-                setSelected(foundCity);
-              } else {
-                // Если город не найден в списке, создаем временный объект города
-                setSelected({
-                  id: 'detected',
-                  guid: 'detected',
-                  contentType: 'city' as const,
-                  label: detected.city,
-                  name: detected.city,
-                  name_alt: detected.city,
-                  name_en: detected.city,
-                  namecase: {
-                    nominative: detected.city,
-                    genitive: detected.city,
-                    dative: detected.city,
-                    accusative: detected.city,
-                    ablative: detected.city,
-                    prepositional: detected.city,
-                  },
-                  coords: {
-                    lat: detected.lat || 0,
-                    lon: detected.lon || 0,
-                  },
-                  region: {
-                    name: '',
-                    label: '',
-                    type: '',
-                    typeShort: '',
-                    contentType: 'region' as const,
-                    id: '',
-                  },
-                  timezone: {
-                    tzid: '',
-                    abbreviation: '',
-                    utcOffset: '',
-                    mskOffset: '',
-                  },
-                  type: '',
-                  typeShort: '',
-                  okato: '',
-                  oktmo: '',
-                  zip: '',
-                  population: 0,
-                  yearCityStatus: 0,
-                  yearFounded: 0,
-                  isCapital: false,
-                  isDualName: false,
-                });
-              }
-              
-              // Если есть координаты, добавляем их в URL
-              if (detected.lat && detected.lon) {
-                const newParams = new URLSearchParams(searchParams.toString());
-                newParams.set('lat', String(detected.lat));
-                newParams.set('lon', String(detected.lon));
-                if (detected.city) {
-                  newParams.set('city', detected.city);
-                }
-                const nextPath = `${window.location.pathname}?${newParams.toString()}`;
-                router.push(nextPath, { scroll: false });
-                
-                // Сохраняем в localStorage
-                try {
-                  localStorage.setItem(storageKey, JSON.stringify({
-                    city: detected.city,
-                    lat: detected.lat,
-                    lon: detected.lon,
-                  }));
-                } catch (error) {
-                  console.error("Error saving detected city:", error);
-                }
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching detected city:", error);
-          }
-        }
-        
         if (cityToSelect) {
           setSelected(cityToSelect);
-          setIsDetectedCityAuto(false);
-          
-          // Если есть только city в URL без координат, добавляем координаты города
-          const hasCityParam = cityParam || storedCity;
-          const hasAddressParam = addressParam || storedAddress;
-          const hasCoordsInUrl = searchParams.get('lat') && searchParams.get('lon');
-          
-          // Если есть city, но нет address и нет координат в URL, добавляем координаты города
-          if (hasCityParam && !hasAddressParam && !hasCoordsInUrl && cityToSelect.coords) {
-            const newParams = new URLSearchParams(searchParams.toString());
-            newParams.set('lat', String(cityToSelect.coords.lat));
-            newParams.set('lon', String(cityToSelect.coords.lon));
-            const nextPath = `${window.location.pathname}?${newParams.toString()}`;
-            router.push(nextPath, { scroll: false });
-            
-            // Обновляем localStorage с координатами
-            try {
-              const raw = localStorage.getItem(storageKey);
-              const existing = raw ? JSON.parse(raw) as { city?: string; lat?: number; lon?: number } : {};
-              localStorage.setItem(storageKey, JSON.stringify({
-                ...existing,
-                lat: cityToSelect.coords.lat,
-                lon: cityToSelect.coords.lon,
-              }));
-            } catch (error) {
-              console.error("Error saving city coordinates:", error);
-            }
-          }
+        } else {
+          // Если города нет в URL - очищаем выбранный город
+          // Это позволяет бэкенду автоматически определить адрес
+          setSelected(null);
         }
       } catch (error) {
         console.error("Error loading cities:", error);
@@ -533,9 +411,7 @@ export const ChangeLocationModal = () => {
           <div className="flex items-center gap-2 min-w-0 w-full">
             <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
             <span className="truncate min-w-0">
-              {searchParams.get('address') || 
-               (selected?.name && isDetectedCityAuto ? `${selected.name} (автоматически)` : selected?.name) || 
-               "Укажите адрес доставки"}
+              {searchParams.get('address') || selected?.name || (detectedCity ? `${detectedCity.city} (автоматически)` : "Укажите адрес доставки")}
             </span>
             <ChevronsUpDown className="w-3 h-3 ml-1 opacity-50 flex-shrink-0" />
           </div>
@@ -665,7 +541,6 @@ export const ChangeLocationModal = () => {
                         );
                         if (cityMatch) {
                           setSelected(cityMatch);
-                          setIsDetectedCityAuto(false);
                         }
                       }
                     } finally {
@@ -676,7 +551,6 @@ export const ChangeLocationModal = () => {
                   if (cityFromAddress) {
                     nextSelected = cityFromAddress;
                     setSelected(cityFromAddress);
-                    setIsDetectedCityAuto(false);
                   }
                   
                   // Fallback: если координаты не получены из валидации, используем координаты города
@@ -689,8 +563,8 @@ export const ChangeLocationModal = () => {
                   newParams.set('address', finalAddress);
                   newParams.delete('city');
                   if (nextSelected) {
-                    const citySlug = nextSelected.name_en?.toLowerCase() || nextSelected.name.toLowerCase();
-                    newParams.set('city', citySlug);
+                    // Передаем полное название города в URL (как с адресом)
+                    newParams.set('city', nextSelected.name);
                   }
                   // Всегда сохраняем координаты, если они есть (из валидации или из города)
                   if (coords) {
@@ -711,7 +585,7 @@ export const ChangeLocationModal = () => {
                       address: finalAddress,
                       lat: coords?.lat,
                       lon: coords?.lon,
-                      city: nextSelected?.name_en?.toLowerCase() || nextSelected?.name?.toLowerCase(),
+                      city: nextSelected?.name, // Сохраняем полное название
                     }));
                   } catch (error) {
                     console.error("Error saving address:", error);
@@ -753,18 +627,16 @@ export const ChangeLocationModal = () => {
                             onSelect={(currentValue) => {
                               const newCity = currentValue === selected?.name ? null : city;
                               setSelected(newCity);
-                              setIsDetectedCityAuto(false);
                               setOpen(false);
                               // Clear address/coords so city selection takes effect immediately
                               setAddressInput("");
                               setAddressCoords(null);
                               
-                              // Обновляем URL с параметром city (для обратной совместимости)
+                              // Обновляем URL с параметром city (передаем полное название как с адресом)
                               if (newCity) {
                                 const newParams = new URLSearchParams(searchParams.toString());
-                                // Используем name_en для URL (kazan, moscow и т.д.)
-                                const citySlug = newCity.name_en?.toLowerCase() || newCity.name.toLowerCase();
-                                newParams.set('city', citySlug);
+                                // Передаем полное название города в URL (как с адресом)
+                                newParams.set('city', newCity.name);
                                 // Если есть address, удаляем его при выборе города
                                 newParams.delete('address');
                                 // Сохраняем координаты города для выбора ближайшей цены
@@ -783,7 +655,7 @@ export const ChangeLocationModal = () => {
                                   const existing = raw ? JSON.parse(raw) as { address?: string; lat?: number; lon?: number; city?: string } : {};
                                   localStorage.setItem(storageKey, JSON.stringify({
                                     ...existing,
-                                    city: citySlug,
+                                    city: newCity.name, // Сохраняем полное название
                                     address: undefined,
                                     // Сохраняем координаты города
                                     lat: newCity.coords?.lat,
@@ -895,10 +767,10 @@ export const ChangeLocationModal = () => {
             <div className="text-[13px] text-gray-600 max-w-[260px] w-full text-center sm:text-left leading-tight">
               <p className="font-medium leading-tight">
                 {selected?.name 
-                  ? (isDetectedCityAuto 
-                      ? `Определен автоматически: ${selected.name}` 
-                      : `Вы выбрали: ${selected.name}`)
-                  : "Город будет определен автоматически"}
+                  ? `Вы выбрали: ${selected.name}` 
+                  : detectedCity 
+                    ? `Автоматически определен: ${detectedCity.city}` 
+                    : "Город будет определен автоматически"}
               </p>
               <p className="text-[11px] leading-tight">
                 Доставка: 1-3 дня • Самовывоз: 1-2 часа
@@ -908,9 +780,45 @@ export const ChangeLocationModal = () => {
               <PopoverClose asChild>
                 <Button variant="outline">Отмена</Button>
               </PopoverClose>
-              {!addressInput.trim() && (
+              {!addressInput.trim() && selected && (
               <PopoverClose asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    if (!selected) return;
+                    
+                    const newParams = new URLSearchParams(searchParams.toString());
+                    // Передаем полное название города в URL (как с адресом)
+                    newParams.set('city', selected.name);
+                    // Удаляем address, если он был
+                    newParams.delete('address');
+                    // Сохраняем координаты города для выбора ближайшей цены
+                    if (selected.coords) {
+                      newParams.set('lat', String(selected.coords.lat));
+                      newParams.set('lon', String(selected.coords.lon));
+                    } else {
+                      newParams.delete('lat');
+                      newParams.delete('lon');
+                    }
+                    
+                    const nextPath = `${window.location.pathname}?${newParams.toString()}`;
+                    router.push(nextPath, { scroll: false });
+                    try {
+                      const raw = localStorage.getItem(storageKey);
+                      const existing = raw ? JSON.parse(raw) as { address?: string; lat?: number; lon?: number; city?: string } : {};
+                      localStorage.setItem(storageKey, JSON.stringify({
+                        ...existing,
+                        city: selected.name, // Сохраняем полное название
+                        address: undefined,
+                        // Сохраняем координаты города
+                        lat: selected.coords?.lat,
+                        lon: selected.coords?.lon,
+                      }));
+                    } catch (error) {
+                      console.error("Error saving city:", error);
+                    }
+                  }}
+                >
                   Сохранить город
                 </Button>
               </PopoverClose>

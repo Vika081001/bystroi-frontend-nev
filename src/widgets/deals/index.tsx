@@ -28,10 +28,11 @@ export const Deals = () => {
       sort_order: 'desc' as const,
     };
     
-    // Приоритет у address, если его нет - используем city
+    // Приоритет у address, если его нет - используем city (как с адресом)
     if (address) {
       baseParams.address = address;
     } else if (city) {
+      // Передаем полное название города напрямую из URL (как с адресом)
       baseParams.city = city;
     }
     if (sellerId) {
@@ -73,10 +74,11 @@ export const Deals = () => {
     sort_order: 'desc' as const,
   };
     
-    // Приоритет у address, если его нет - используем city
+    // Приоритет у address, если его нет - используем city (как с адресом)
     if (address) {
       baseParams.address = address;
     } else if (city) {
+      // Передаем полное название города напрямую из URL (как с адресом)
       baseParams.city = city;
     }
     

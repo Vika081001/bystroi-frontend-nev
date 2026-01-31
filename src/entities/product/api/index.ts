@@ -1,12 +1,75 @@
 import axios from "axios";
+import { AxiosResponse } from "axios";
 
 import { GetProductDto, GetProductsDto } from "../model/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://app.tablecrm.com/api/v1/mp";
 
+/**
+ * Извлекает автоматически определенный город из заголовков HTTP ответа
+ */
+export function getDetectedCityFromResponse(response: AxiosResponse): {
+  city: string;
+  lat: number;
+  lon: number;
+} | null {
+  try {
+    const headers = response.headers;
+    
+    // AxiosHeaders может иметь метод get(), пробуем разные способы доступа
+    let cityHeader: string | undefined;
+    let latHeader: string | undefined;
+    let lonHeader: string | undefined;
+    
+    // Пробуем через прямое обращение
+    cityHeader = headers['x-detected-city'] || headers['X-Detected-City'];
+    latHeader = headers['x-detected-lat'] || headers['X-Detected-Lat'];
+    lonHeader = headers['x-detected-lon'] || headers['X-Detected-Lon'];
+    
+    // Если не нашли, пробуем через метод get() (если есть)
+    if (!cityHeader && typeof (headers as any).get === 'function') {
+      cityHeader = (headers as any).get('x-detected-city') || (headers as any).get('X-Detected-City');
+      latHeader = (headers as any).get('x-detected-lat') || (headers as any).get('X-Detected-Lat');
+      lonHeader = (headers as any).get('x-detected-lon') || (headers as any).get('X-Detected-Lon');
+    }
+    
+    // Если все еще не нашли, пробуем через Object.keys и поиск
+    if (!cityHeader) {
+      const headerKeys = Object.keys(headers);
+      const cityKey = headerKeys.find(k => k.toLowerCase() === 'x-detected-city');
+      const latKey = headerKeys.find(k => k.toLowerCase() === 'x-detected-lat');
+      const lonKey = headerKeys.find(k => k.toLowerCase() === 'x-detected-lon');
+      
+      if (cityKey) cityHeader = headers[cityKey] as string;
+      if (latKey) latHeader = headers[latKey] as string;
+      if (lonKey) lonHeader = headers[lonKey] as string;
+    }
+    
+    if (cityHeader && latHeader && lonHeader) {
+      // Бэкенд кодирует город через quote(), декодируем через decodeURIComponent
+      const city = decodeURIComponent(String(cityHeader));
+      const lat = parseFloat(String(latHeader));
+      const lon = parseFloat(String(lonHeader));
+      
+      if (!Number.isNaN(lat) && !Number.isNaN(lon) && city) {
+        return { city, lat, lon };
+      }
+    }
+  } catch (error) {
+    console.error("Error parsing detected city from headers:", error);
+  }
+  
+  return null;
+}
+
 export const fetchProducts = async (params: GetProductsDto) => {
   try {
-    const requestParams = {
+    // Если есть address - используем его, если нет - используем city как address
+    // Это нужно для того, чтобы бэкенд фильтровал цены по городу, а не только сортировал по расстоянию
+    // НО: если нет ни address, ни city - НЕ передаем address, чтобы бэкенд мог определить город по IP
+    const addressParam = params.address || params.city;
+    
+    const requestParams: any = {
       page: params.page || 1,
       size: params.size || 20,
       sort_by: params.sort_by,
@@ -19,28 +82,69 @@ export const fetchProducts = async (params: GetProductsDto) => {
       rating_to: params.rating_to,
       in_stock: params.in_stock,
       global_category_id: params.global_category_id,
-      // Приоритет у address, если его нет - используем city (обратная совместимость)
-      address: params.address || params.city,
       seller_id: params.seller_id,
-      lat: params.lat,
-      lon: params.lon,
     };
+    
+    // Передаем address только если он есть (не передаем, если нет ни address, ни city)
+    if (addressParam) {
+      requestParams.address = addressParam;
+    }
+    
+    // Передаем координаты только если они есть
+    if (params.lat != null) {
+      requestParams.lat = params.lat;
+    }
+    if (params.lon != null) {
+      requestParams.lon = params.lon;
+    }
     
     // Удаляем undefined значения из параметров
     Object.keys(requestParams).forEach(key => {
-      if (requestParams[key as keyof typeof requestParams] === undefined) {
-        delete requestParams[key as keyof typeof requestParams];
+      if (requestParams[key] === undefined) {
+        delete requestParams[key];
       }
     });
     
-    const response = await axios.get(`${API_BASE_URL}/products`, {
-      params: requestParams,
+    // Используем fetch для получения данных и проверки заголовков
+    const url = new URL(`${API_BASE_URL}/products`);
+    Object.entries(requestParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+    
+    const fetchResponse = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     });
     
-    return response.data;
+    // Пытаемся извлечь автоматически определенный город из заголовков
+    const detectedCityFromFetch = fetchResponse.headers.get('X-Detected-City');
+    const detectedLatFromFetch = fetchResponse.headers.get('X-Detected-Lat');
+    const detectedLonFromFetch = fetchResponse.headers.get('X-Detected-Lon');
+    
+    if (detectedCityFromFetch && detectedLatFromFetch && detectedLonFromFetch) {
+      try {
+        const city = decodeURIComponent(detectedCityFromFetch);
+        const lat = parseFloat(detectedLatFromFetch);
+        const lon = parseFloat(detectedLonFromFetch);
+        if (!Number.isNaN(lat) && !Number.isNaN(lon) && city) {
+          const detected = { city, lat, lon };
+          console.log('[DEBUG] Автоматически определенный город из IP:', detected);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('detected_city', JSON.stringify(detected));
+          }
+        }
+      } catch (e) {
+        console.error('Ошибка при парсинге автоматически определенного города:', e);
+      }
+    }
+    
+    // Парсим и возвращаем данные
+    const fetchData = await fetchResponse.json();
+    return fetchData;
   } catch (error) {
     console.error("Error fetching products:", error);
     throw error;
@@ -107,11 +211,14 @@ export const fetchDetectedCity = async (): Promise<{ city?: string; lat?: number
 
 export const fetchProduct = async (params: GetProductDto) => {
   try {
-    const requestParams: { lat?: number; lon?: number; address?: string; city?: string } = {
+    // Если есть address - используем его, если нет - используем city как address
+    // Это нужно для того, чтобы бэкенд фильтровал цены по городу, а не только сортировал по расстоянию
+    const addressParam = params.address || params.city;
+    
+    const requestParams: { lat?: number; lon?: number; address?: string } = {
       lat: params.lat,
       lon: params.lon,
-      address: params.address,
-      city: params.city,
+      address: addressParam,
     };
     
     // Удаляем undefined значения из параметров
@@ -133,6 +240,9 @@ export const fetchProduct = async (params: GetProductDto) => {
 
 export const fetchProductServer = async (id: string, lat?: number, lon?: number, address?: string, city?: string) => {
   try {
+    // Если есть address - используем его, если нет - используем city как address
+    const addressParam = address || city;
+    
     const params = new URLSearchParams();
     if (lat != null) {
       params.append('lat', String(lat));
@@ -140,11 +250,8 @@ export const fetchProductServer = async (id: string, lat?: number, lon?: number,
     if (lon != null) {
       params.append('lon', String(lon));
     }
-    if (address) {
-      params.append('address', address);
-    }
-    if (city) {
-      params.append('city', city);
+    if (addressParam) {
+      params.append('address', addressParam);
     }
     
     const url = `${API_BASE_URL}/products/${id}${params.toString() ? `?${params.toString()}` : ''}`;
