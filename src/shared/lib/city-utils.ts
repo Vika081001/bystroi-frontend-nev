@@ -118,3 +118,126 @@ export function getCityNameFromSlugSync(slug: string): string | null {
 
   return city?.name || null;
 }
+
+/**
+ * Получает координаты из sessionStorage (автоматически определенный город)
+ */
+export function getCoordinatesFromSessionStorage(): { lat?: number; lon?: number } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const detected = sessionStorage.getItem('detected_city');
+    if (detected) {
+      const parsed = JSON.parse(detected);
+      if (parsed.lat != null && parsed.lon != null) {
+        return { lat: parsed.lat, lon: parsed.lon };
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing detected city from sessionStorage:", e);
+  }
+  return null;
+}
+
+/**
+ * Получает параметры адреса с приоритетом:
+ * 1. Вручную введенный адрес из localStorage (manual: true)
+ * 2. Параметры из URL
+ * 3. Автоматически определенный город из sessionStorage
+ */
+export function getLocationParams(): {
+  address?: string;
+  city?: string;
+  lat?: number;
+  lon?: number;
+} {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const storageKey = 'bystroi_location';
+  
+  // 1. Проверяем вручную введенный адрес из localStorage
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      const parsed = JSON.parse(stored) as { 
+        address?: string; 
+        city?: string; 
+        lat?: number; 
+        lon?: number;
+        manual?: boolean;
+      };
+      // Если адрес был введен вручную, используем его
+      if (parsed.manual && (parsed.address || parsed.city)) {
+        return {
+          address: parsed.address,
+          city: parsed.city,
+          lat: parsed.lat,
+          lon: parsed.lon,
+        };
+      }
+    }
+  } catch (e) {
+    // Игнорируем ошибки
+  }
+
+  // 2. Проверяем параметры из URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const addressFromUrl = urlParams.get('address');
+  const cityFromUrl = urlParams.get('city');
+  const latFromUrl = urlParams.get('lat');
+  const lonFromUrl = urlParams.get('lon');
+
+  if (addressFromUrl || cityFromUrl) {
+    return {
+      address: addressFromUrl || undefined,
+      city: cityFromUrl || undefined,
+      lat: latFromUrl ? Number(latFromUrl) : undefined,
+      lon: lonFromUrl ? Number(lonFromUrl) : undefined,
+    };
+  }
+
+  // 3. Используем автоматически определенный город из sessionStorage
+  const detected = getCoordinatesFromSessionStorage();
+  if (detected) {
+    try {
+      const detectedCity = sessionStorage.getItem('detected_city');
+      if (detectedCity) {
+        const parsed = JSON.parse(detectedCity);
+        return {
+          city: parsed.city,
+          lat: parsed.lat,
+          lon: parsed.lon,
+        };
+      }
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+  }
+
+  return {};
+}
+
+/**
+ * Генерирует строку параметров адреса для URL
+ */
+export function getLocationParamsString(): string {
+  const params = getLocationParams();
+  const urlParams = new URLSearchParams();
+  
+  if (params.address) {
+    urlParams.set('address', params.address);
+  }
+  if (params.city) {
+    urlParams.set('city', params.city);
+  }
+  if (params.lat != null) {
+    urlParams.set('lat', String(params.lat));
+  }
+  if (params.lon != null) {
+    urlParams.set('lon', String(params.lon));
+  }
+  
+  const paramString = urlParams.toString();
+  return paramString ? `?${paramString}` : '';
+}

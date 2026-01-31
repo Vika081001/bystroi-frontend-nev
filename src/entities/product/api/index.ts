@@ -33,10 +33,41 @@ export function getDetectedCityFromResponse(data: any): {
 
 export const fetchProducts = async (params: GetProductsDto) => {
   try {
-    // Если есть address - используем его, если нет - используем city как address
-    // Это нужно для того, чтобы бэкенд фильтровал цены по городу, а не только сортировал по расстоянию
-    // НО: если нет ни address, ни city - НЕ передаем address, чтобы бэкенд мог определить город по IP
-    const addressParam = params.address || params.city;
+    // Приоритет: 1) параметры из запроса, 2) вручную введенный адрес из localStorage, 3) автоматически определенный город
+    let addressParam = params.address || params.city;
+    let lat = params.lat;
+    let lon = params.lon;
+    
+    // Если параметров нет, проверяем вручную введенный адрес из localStorage
+    if ((!addressParam || lat == null || lon == null) && typeof window !== 'undefined') {
+      try {
+        const storageKey = 'bystroi_location';
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as { 
+            address?: string; 
+            city?: string; 
+            lat?: number; 
+            lon?: number;
+            manual?: boolean;
+          };
+          // Если адрес был введен вручную, используем его
+          if (parsed.manual && (parsed.address || parsed.city)) {
+            if (!addressParam) {
+              addressParam = parsed.address || parsed.city;
+            }
+            if (lat == null && parsed.lat != null) {
+              lat = parsed.lat;
+            }
+            if (lon == null && parsed.lon != null) {
+              lon = parsed.lon;
+            }
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
     
     const requestParams: any = {
       page: params.page || 1,
@@ -60,9 +91,9 @@ export const fetchProducts = async (params: GetProductsDto) => {
     }
     
     // Передаем координаты только если они есть
-    // Если координат нет в params, но есть в sessionStorage (автоматически определенный город) - используем их
-    if (params.lat != null) {
-      requestParams.lat = params.lat;
+    // Если координат все еще нет, проверяем sessionStorage (автоматически определенный город)
+    if (lat != null) {
+      requestParams.lat = lat;
     } else if (typeof window !== 'undefined') {
       try {
         const detected = sessionStorage.getItem('detected_city');
@@ -77,8 +108,8 @@ export const fetchProducts = async (params: GetProductsDto) => {
       }
     }
     
-    if (params.lon != null) {
-      requestParams.lon = params.lon;
+    if (lon != null) {
+      requestParams.lon = lon;
     } else if (typeof window !== 'undefined') {
       try {
         const detected = sessionStorage.getItem('detected_city');
@@ -155,14 +186,43 @@ export const fetchDetectedCity = async (): Promise<{ city: string; lat: number; 
 
 export const fetchProduct = async (params: GetProductDto) => {
   try {
-    // Если есть address - используем его, если нет - используем city как address
-    // Это нужно для того, чтобы бэкенд фильтровал цены по городу, а не только сортировал по расстоянию
-    const addressParam = params.address || params.city;
-    
+    // Приоритет: 1) параметры из запроса, 2) вручную введенный адрес из localStorage, 3) автоматически определенный город
+    let addressParam = params.address || params.city;
     let lat = params.lat;
     let lon = params.lon;
     
-    // Если координат нет в параметрах, проверяем sessionStorage (автоматически определенный город)
+    // Если параметров нет, проверяем вручную введенный адрес из localStorage
+    if ((!addressParam || lat == null || lon == null) && typeof window !== 'undefined') {
+      try {
+        const storageKey = 'bystroi_location';
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as { 
+            address?: string; 
+            city?: string; 
+            lat?: number; 
+            lon?: number;
+            manual?: boolean;
+          };
+          // Если адрес был введен вручную, используем его
+          if (parsed.manual && (parsed.address || parsed.city)) {
+            if (!addressParam) {
+              addressParam = parsed.address || parsed.city;
+            }
+            if (lat == null && parsed.lat != null) {
+              lat = parsed.lat;
+            }
+            if (lon == null && parsed.lon != null) {
+              lon = parsed.lon;
+            }
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+    
+    // Если координат все еще нет, проверяем sessionStorage (автоматически определенный город)
     if ((lat == null || lon == null) && typeof window !== 'undefined') {
       try {
         const detected = sessionStorage.getItem('detected_city');
@@ -205,7 +265,7 @@ export const fetchProduct = async (params: GetProductDto) => {
 
 export const fetchProductServer = async (id: string, lat?: number, lon?: number, address?: string, city?: string) => {
   try {
-    // Если есть address - используем его, если нет - используем city как address
+    // Приоритет: используем переданные параметры (они уже должны быть из URL или localStorage на клиенте)
     const addressParam = address || city;
     
     const params = new URLSearchParams();

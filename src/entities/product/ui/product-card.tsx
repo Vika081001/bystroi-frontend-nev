@@ -13,6 +13,7 @@ import { useTrackEvent } from "@/entities/statistics/model/hooks";
 import { Button } from "@/shared/ui/kit/button";
 import { useDataUser } from "@/shared/hooks/useDataUser";
 import { toast } from "sonner";
+import { getLocationParamsString } from "@/shared/lib/city-utils";
 
 type ProductCardProps = Product & {
   position?: number;
@@ -178,10 +179,13 @@ export const ProductCard = ({
   const displaySeller = seller_name != null && seller_name.trim() !== "";
   const transformedImageUrl = images?.[0] ? transformImageUrl(images[0]) : null;
 
+  const locationParams = getLocationParamsString();
+  const productUrl = `/product/${id}${locationParams}`;
+
   return (
     <div ref={cardRef}>
       <Link
-        href={`/product/${id}`}
+        href={productUrl}
         className="group relative overflow-hidden h-72 rounded-lg border border-gray-100 shadow-sm hover:ring-2 ring-gray-200 flex items-end transition-all duration-300 hover:scale-[1.02]"
         onClick={handleCardClick}
       >

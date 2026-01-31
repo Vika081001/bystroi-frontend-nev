@@ -13,6 +13,7 @@ import { InputGroup, InputGroupInput } from "@/shared/ui/kit/input-group";
 import { Skeleton } from "@/shared/ui/kit/skeleton";
 
 import { transformImageUrl } from "@/shared/lib/image-utils";
+import { getLocationParamsString } from "@/shared/lib/city-utils";
 
 interface CartItemProps {
   item: {
@@ -250,7 +251,7 @@ export const CartItem = ({ item }: CartItemProps) => {
         
         <div className="flex justify-between items-center">
           <Link 
-            href={`/product/${product.id}`}
+            href={`/product/${product.id}${getLocationParamsString()}`}
             className="text-sm tracking-tight font-medium hover:text-blue-600 transition-colors"
           >
             {product.name}

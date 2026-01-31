@@ -663,6 +663,7 @@ export const ChangeLocationModal = () => {
                       lat: coords?.lat,
                       lon: coords?.lon,
                       city: nextSelected?.name, // Сохраняем полное название
+                      manual: true, // Флаг, что адрес введен вручную
                     }));
                   } catch (error) {
                     console.error("Error saving address:", error);
@@ -737,6 +738,7 @@ export const ChangeLocationModal = () => {
                                     // Сохраняем координаты города
                                     lat: newCity.coords?.lat,
                                     lon: newCity.coords?.lon,
+                                    manual: true, // Флаг, что город выбран вручную
                                   }));
                                 } catch (error) {
                                   console.error("Error saving city:", error);
@@ -890,6 +892,7 @@ export const ChangeLocationModal = () => {
                         // Сохраняем координаты города
                         lat: selected.coords?.lat,
                         lon: selected.coords?.lon,
+                        manual: true, // Флаг, что город выбран вручную
                       }));
                     } catch (error) {
                       console.error("Error saving city:", error);
