@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
 import { Badge } from '@/shared/ui/kit/badge';
 import { Label } from '@/shared/ui/kit/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/kit/select';
+import { getLocationParamsString } from '@/shared/lib/city-utils';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -47,7 +48,7 @@ export default function SellerStatisticsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Доступ запрещен</h1>
           <p className="text-gray-600">Эта страница доступна только для продавцов</p>
           <Button asChild>
-            <a href="/account">Вернуться в личный кабинет</a>
+            <a href={`/account${getLocationParamsString()}`}>Вернуться в личный кабинет</a>
           </Button>
         </div>
       </div>

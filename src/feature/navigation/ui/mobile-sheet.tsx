@@ -19,6 +19,7 @@ import {
 import { useCategoryTree } from "@/shared/hooks/useCategory";
 import { Skeleton } from "@/shared/ui/kit/skeleton";
 import { useCart } from "@/entities/cart/model/hooks";
+import { getLocationParamsString } from "@/shared/lib/city-utils";
 
 export const MobileSheet = () => {
   const pathname = usePathname();
@@ -172,7 +173,7 @@ export const MobileSheet = () => {
               </Button>
             </Link>
             
-            <Link href="/account">
+            <Link href={`/account${getLocationParamsString()}`}>
               <Button 
                 variant={isActive("/account") ? "secondary" : "ghost"} 
                 className="w-full justify-start text-lg h-12"

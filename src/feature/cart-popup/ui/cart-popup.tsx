@@ -2,6 +2,7 @@ import { PopoverClose } from "@radix-ui/react-popover";
 import { ShoppingCart, X } from "lucide-react";
 import React from "react";
 import { isMobile } from "react-device-detect";
+import Link from "next/link";
 
 import { CartItem, useCart } from "@/entities/cart";
 
@@ -12,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/shared/ui/kit/popover";
 import { Separator } from "@/shared/ui/kit/separator";
+import { getLocationParamsString } from "@/shared/lib/city-utils";
 
 export const CartPopup = () => {
   const { data, isLoading, isError } = useCart();
@@ -55,11 +57,11 @@ export const CartPopup = () => {
               </p>
             </div>
             <div className="pt-2">
-              <a href="/payment">
+              <Link href={`/payment${getLocationParamsString()}`}>
                 <Button size="lg" className="w-full bg-blue-600">
                   Оплатить
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>

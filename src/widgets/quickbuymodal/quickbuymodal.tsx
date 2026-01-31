@@ -88,15 +88,47 @@ const QuickBuyModal = ({
   
   useEffect(() => {
     const addressFromUrl = searchParams.get("address");
-    const locationRaw = localStorage.getItem("bystroi_location");
-    const locationStored = locationRaw ? JSON.parse(locationRaw) as { address?: string } : {};
+    const cityFromUrl = searchParams.get("city");
+    const hasUrlParams = addressFromUrl || cityFromUrl;
+    
+    // ВАЖНО: Используем localStorage ТОЛЬКО если есть параметры в URL
+    // Если параметров нет в URL, значит пользователь удалил их, и мы не должны использовать localStorage
+    // Это позволяет использовать IP-определенный город из sessionStorage
+    let addressFromStorage = "";
+    if (hasUrlParams && typeof window !== 'undefined') {
+      try {
+        const locationRaw = localStorage.getItem("bystroi_location");
+        if (locationRaw) {
+          const locationStored = JSON.parse(locationRaw) as { address?: string };
+          addressFromStorage = locationStored.address || "";
+        }
+      } catch (error) {
+        console.error("Error reading localStorage:", error);
+      }
+    }
+    
+    // Если параметров нет в URL, используем IP-определенный город из sessionStorage
+    let ipDetectedAddress = "";
+    if (!hasUrlParams && typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.city) {
+            ipDetectedAddress = parsed.city;
+          }
+        }
+      } catch (error) {
+        // Игнорируем ошибки
+      }
+    }
 
     if (userDataAuth) {
       setFormData(prev => ({
         ...prev,
         name: userDataAuth!.name,
         phone: userDataAuth!.contragent_phone,
-        address: addressFromUrl || locationStored.address || userDataAuth!.address || "",
+        address: addressFromUrl || cityFromUrl || addressFromStorage || ipDetectedAddress || userDataAuth!.address || "",
       }));
     } else {
       const savedData = localStorage.getItem("user_delivery_data");
@@ -107,7 +139,7 @@ const QuickBuyModal = ({
             ...prev,
             name: parsedData!.name,
             phone: parsedData!.contragent_phone,
-            address: addressFromUrl || locationStored.address || parsedData!.address || "",
+            address: addressFromUrl || cityFromUrl || addressFromStorage || ipDetectedAddress || parsedData!.address || "",
           }));
         } catch (error) {
           console.error("Error parsing localStorage data:", error);
@@ -115,7 +147,7 @@ const QuickBuyModal = ({
       } else {
         setFormData(prev => ({
           ...prev,
-          address: addressFromUrl || locationStored.address || "",
+          address: addressFromUrl || cityFromUrl || addressFromStorage || ipDetectedAddress || "",
         }));
       }
     }

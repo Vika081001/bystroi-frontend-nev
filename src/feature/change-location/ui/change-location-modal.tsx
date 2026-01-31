@@ -419,22 +419,30 @@ export const ChangeLocationModal = () => {
         // Читаем address или city из URL/локального хранилища
         const addressParam = searchParams.get('address');
         const cityParam = searchParams.get('city');
+        const hasUrlParams = addressParam || cityParam;
+        
+        // ВАЖНО: Используем localStorage ТОЛЬКО если есть параметры в URL
+        // Если параметров нет в URL, значит пользователь удалил их, и мы не должны использовать localStorage
+        // Это позволяет использовать IP-определенный город из sessionStorage
         let storedAddress: string | undefined;
         let storedCity: string | undefined;
-        try {
-          const raw = localStorage.getItem(storageKey);
-          if (raw) {
-            const stored = JSON.parse(raw) as { address?: string; city?: string };
-            storedAddress = stored.address;
-            storedCity = stored.city;
+        if (hasUrlParams) {
+          try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+              const stored = JSON.parse(raw) as { address?: string; city?: string };
+              storedAddress = stored.address;
+              storedCity = stored.city;
+            }
+          } catch (error) {
+            console.error("Error reading stored city:", error);
           }
-        } catch (error) {
-          console.error("Error reading stored city:", error);
         }
         let cityToSelect: City | null = null;
         
         // Если есть address, пытаемся извлечь название города из адреса
-        const addressSource = addressParam || storedAddress;
+        // Используем ТОЛЬКО addressParam, НЕ используем storedAddress если нет параметров в URL
+        const addressSource = addressParam || (hasUrlParams ? storedAddress : undefined);
         if (addressSource) {
           cityToSelect = findCityInAddress(addressSource, data);
         }

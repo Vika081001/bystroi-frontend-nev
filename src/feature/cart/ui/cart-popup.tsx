@@ -8,6 +8,7 @@ import { PopoverClose } from "@radix-ui/react-popover";
 import { ShoppingCart, X } from "lucide-react";
 import React from "react";
 import { isMobile } from "react-device-detect";
+import Link from "next/link";
 
 import { Button } from "@/shared/ui/kit/button";
 import {
@@ -16,6 +17,7 @@ import {
   PopoverTrigger,
 } from "@/shared/ui/kit/popover";
 import { Separator } from "@/shared/ui/kit/separator";
+import { getLocationParamsString } from "@/shared/lib/city-utils";
 
 export const CartPopup = () => {
   const { data: cart, isLoading: isCartLoading, error: cartError } = useCart();
@@ -29,9 +31,10 @@ export const CartPopup = () => {
 
   const isLoading = isCartLoading || areItemsLoading;
   const itemCount = items?.length || 0;
+  const [open, setOpen] = React.useState(false);
 
   return (
-     <Popover modal={isMobile}>
+     <Popover modal={isMobile} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button size="icon" variant="ghost" className="relative cursor-pointer">
           <ShoppingCart width={20} height={20} />
@@ -106,7 +109,7 @@ export const CartPopup = () => {
             </p>
           </div>
           <div className="pt-2">
-            <a href="/payment">
+            <Link href={`/payment${getLocationParamsString()}`} onClick={() => setOpen(false)}>
               <Button 
                 size="lg" 
                 className="w-full bg-blue-600 hover:bg-blue-700 cursor-pointer"
@@ -114,7 +117,7 @@ export const CartPopup = () => {
               >
                 Перейти к оформлению
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
       </PopoverContent>

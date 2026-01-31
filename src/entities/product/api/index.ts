@@ -33,39 +33,48 @@ export function getDetectedCityFromResponse(data: any): {
 
 export const fetchProducts = async (params: GetProductsDto) => {
   try {
-    // Приоритет: 1) параметры из запроса, 2) вручную введенный адрес из localStorage, 3) автоматически определенный город
+    // Приоритет: 1) параметры из запроса, 2) вручную введенный адрес из localStorage (только если есть параметры в URL), 3) автоматически определенный город
     let addressParam = params.address || params.city;
     let lat = params.lat;
     let lon = params.lon;
     
     // Если параметров нет, проверяем вручную введенный адрес из localStorage
+    // ВАЖНО: Используем localStorage ТОЛЬКО если есть параметры в URL
+    // Если параметров нет в URL, значит пользователь удалил их, и мы не должны использовать localStorage
     if ((!addressParam || lat == null || lon == null) && typeof window !== 'undefined') {
-      try {
-        const storageKey = 'bystroi_location';
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored) as { 
-            address?: string; 
-            city?: string; 
-            lat?: number; 
-            lon?: number;
-            manual?: boolean;
-          };
-          // Если адрес был введен вручную, используем его
-          if (parsed.manual && (parsed.address || parsed.city)) {
-            if (!addressParam) {
-              addressParam = parsed.address || parsed.city;
-            }
-            if (lat == null && parsed.lat != null) {
-              lat = parsed.lat;
-            }
-            if (lon == null && parsed.lon != null) {
-              lon = parsed.lon;
+      // Проверяем, есть ли параметры в URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasUrlParams = urlParams.get('address') || urlParams.get('city');
+      
+      // Используем localStorage ТОЛЬКО если есть параметры в URL
+      if (hasUrlParams) {
+        try {
+          const storageKey = 'bystroi_location';
+          const stored = localStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as { 
+              address?: string; 
+              city?: string; 
+              lat?: number; 
+              lon?: number;
+              manual?: boolean;
+            };
+            // Если адрес был введен вручную, используем его
+            if (parsed.manual && (parsed.address || parsed.city)) {
+              if (!addressParam) {
+                addressParam = parsed.address || parsed.city;
+              }
+              if (lat == null && parsed.lat != null) {
+                lat = parsed.lat;
+              }
+              if (lon == null && parsed.lon != null) {
+                lon = parsed.lon;
+              }
             }
           }
+        } catch (e) {
+          // Игнорируем ошибки
         }
-      } catch (e) {
-        // Игнорируем ошибки
       }
     }
     
@@ -186,39 +195,48 @@ export const fetchDetectedCity = async (): Promise<{ city: string; lat: number; 
 
 export const fetchProduct = async (params: GetProductDto) => {
   try {
-    // Приоритет: 1) параметры из запроса, 2) вручную введенный адрес из localStorage, 3) автоматически определенный город
+    // Приоритет: 1) параметры из запроса, 2) вручную введенный адрес из localStorage (только если есть параметры в URL), 3) автоматически определенный город
     let addressParam = params.address || params.city;
     let lat = params.lat;
     let lon = params.lon;
     
     // Если параметров нет, проверяем вручную введенный адрес из localStorage
+    // ВАЖНО: Используем localStorage ТОЛЬКО если есть параметры в URL
+    // Если параметров нет в URL, значит пользователь удалил их, и мы не должны использовать localStorage
     if ((!addressParam || lat == null || lon == null) && typeof window !== 'undefined') {
-      try {
-        const storageKey = 'bystroi_location';
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored) as { 
-            address?: string; 
-            city?: string; 
-            lat?: number; 
-            lon?: number;
-            manual?: boolean;
-          };
-          // Если адрес был введен вручную, используем его
-          if (parsed.manual && (parsed.address || parsed.city)) {
-            if (!addressParam) {
-              addressParam = parsed.address || parsed.city;
-            }
-            if (lat == null && parsed.lat != null) {
-              lat = parsed.lat;
-            }
-            if (lon == null && parsed.lon != null) {
-              lon = parsed.lon;
+      // Проверяем, есть ли параметры в URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasUrlParams = urlParams.get('address') || urlParams.get('city');
+      
+      // Используем localStorage ТОЛЬКО если есть параметры в URL
+      if (hasUrlParams) {
+        try {
+          const storageKey = 'bystroi_location';
+          const stored = localStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as { 
+              address?: string; 
+              city?: string; 
+              lat?: number; 
+              lon?: number;
+              manual?: boolean;
+            };
+            // Если адрес был введен вручную, используем его
+            if (parsed.manual && (parsed.address || parsed.city)) {
+              if (!addressParam) {
+                addressParam = parsed.address || parsed.city;
+              }
+              if (lat == null && parsed.lat != null) {
+                lat = parsed.lat;
+              }
+              if (lon == null && parsed.lon != null) {
+                lon = parsed.lon;
+              }
             }
           }
+        } catch (e) {
+          // Игнорируем ошибки
         }
-      } catch (e) {
-        // Игнорируем ошибки
       }
     }
     

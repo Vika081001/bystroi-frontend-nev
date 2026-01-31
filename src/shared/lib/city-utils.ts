@@ -170,31 +170,10 @@ export function getLocationParams(): {
     };
   }
 
-  // 2. Проверяем вручную введенный адрес из localStorage
-  const storageKey = 'bystroi_location';
-  try {
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      const parsed = JSON.parse(stored) as { 
-        address?: string; 
-        city?: string; 
-        lat?: number; 
-        lon?: number;
-        manual?: boolean;
-      };
-      // Если адрес был введен вручную, используем его
-      if (parsed.manual && (parsed.address || parsed.city)) {
-        return {
-          address: parsed.address,
-          city: parsed.city,
-          lat: parsed.lat,
-          lon: parsed.lon,
-        };
-      }
-    }
-  } catch (e) {
-    // Игнорируем ошибки
-  }
+  // 2. Проверяем вручную введенный адрес из localStorage ТОЛЬКО если параметров нет в URL
+  // Если параметров нет в URL, значит пользователь удалил их, и мы не должны использовать localStorage
+  // Это позволяет вернуться к IP-определенному городу
+  // НЕ используем localStorage, если параметров нет в URL
 
   // 3. Автоматически определенный город НЕ возвращаем для URL параметров
   // Он используется только внутри API запросов
@@ -229,32 +208,9 @@ export function getLocationParamsString(): string {
     return paramString ? `?${paramString}` : '';
   }
 
-  // 2. Проверяем вручную введенный адрес из localStorage
-  const storageKey = 'bystroi_location';
-  try {
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      const parsed = JSON.parse(stored) as { 
-        address?: string; 
-        city?: string; 
-        lat?: number; 
-        lon?: number;
-        manual?: boolean;
-      };
-      // ТОЛЬКО если адрес был введен вручную - добавляем параметры в URL
-      if (parsed.manual && (parsed.address || parsed.city)) {
-        const resultParams = new URLSearchParams();
-        if (parsed.address) resultParams.set('address', parsed.address);
-        if (parsed.city) resultParams.set('city', parsed.city);
-        if (parsed.lat != null) resultParams.set('lat', String(parsed.lat));
-        if (parsed.lon != null) resultParams.set('lon', String(parsed.lon));
-        const paramString = resultParams.toString();
-        return paramString ? `?${paramString}` : '';
-      }
-    }
-  } catch (e) {
-    // Игнорируем ошибки
-  }
+  // 2. НЕ используем localStorage, если параметров нет в URL
+  // Если параметров нет в URL, значит пользователь удалил их, и мы не должны использовать localStorage
+  // Это позволяет вернуться к IP-определенному городу
 
   // 3. Автоматически определенный город НЕ добавляем в URL
   return '';

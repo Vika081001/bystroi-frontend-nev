@@ -27,6 +27,7 @@ import { Label } from "@/shared/ui/kit/label";
 import { Separator } from "@/shared/ui/kit/separator";
 import { Badge } from "@/shared/ui/kit/badge";
 import { Card, CardContent } from "@/shared/ui/kit/card";
+import { getLocationParamsString } from "@/shared/lib/city-utils";
 
 export const LoginPopup: React.FC<{ trigger: React.ReactNode }> = ({ trigger }) => {
   const { isAuthenticated, user, login, logout } = useAuthStore();
@@ -134,7 +135,7 @@ export const LoginPopup: React.FC<{ trigger: React.ReactNode }> = ({ trigger }) 
                 asChild
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:shadow-lg active:scale-[0.98] cursor-pointer "
               >
-                <a href="/account" className="cursor-pointer">Перейти в личный кабинет</a>
+                <a href={`/account${getLocationParamsString()}`} className="cursor-pointer">Перейти в личный кабинет</a>
               </Button>
               
               <Separator />

@@ -1,6 +1,6 @@
 "use client";
 import { LockIcon, X, CheckCircle, AlertCircle, LocateIcon } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useCart } from "@/entities/cart/model/hooks";
@@ -72,6 +72,10 @@ function PaymentContent() {
     recipientName: "",
     recipientPhone: "",
   });
+  
+  // ПРОСТОЙ ПОДХОД: Отдельное состояние для адреса, которое управляется только из URL/sessionStorage
+  const [addressValue, setAddressValue] = useState<string>('');
+  const addressSourceRef = useRef<'url' | 'ip' | 'manual' | null>(null); // Отслеживаем источник адреса
 
   const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
   const [isGeolocationLoading, setIsGeolocationLoading] = useState(false);
@@ -85,6 +89,9 @@ function PaymentContent() {
   });
   const userDataAuth = useDataUser();
   const searchParams = useSearchParams();
+  const addressManuallyEntered = useRef(false); // Флаг, что адрес был введен пользователем вручную
+  const isFormInitialized = useRef(false); // Флаг, что форма была инициализирована
+  const isUpdatingFromUrl = useRef(false); // Флаг, что адрес обновляется программно из URL
 
   
 
@@ -143,13 +150,19 @@ function PaymentContent() {
         try {
           const address = await getAddressFromCoordinates(coords.lat, coords.lon);
           
-          setFormData(prev => ({
-            ...prev,
-            address: address,
-          }));
-          if (userDataAuth) {
-            userDataAuth.address = address;
-          }
+          // Помечаем, что адрес был введен пользователем (через геолокацию)
+          addressManuallyEntered.current = true;
+          
+          // ВАЖНО: НЕ обновляем formData.address напрямую здесь
+          // Адрес обновится автоматически через useEffect, когда URL изменится
+          // setFormData(prev => ({
+          //   ...prev,
+          //   address: address,
+          // }));
+          // ВАЖНО: НЕ обновляем userDataAuth.address, чтобы не вызывать пересчет
+          // if (userDataAuth) {
+          //   userDataAuth.address = address;
+          // }
           
           // Сохраняем адрес в localStorage и обновляем URL
           try {
@@ -217,70 +230,149 @@ function PaymentContent() {
     );
   };
 
+  //Вычисляем адрес напрямую из URL или sessionStorage
+  // НЕ используем formData.address для адреса, используем отдельное состояние
+  // Вычисляем адрес для формы на основе URL параметров
   useEffect(() => {
-    let userData: UserData | null = null;
     const addressFromUrl = searchParams.get("address");
-    const locationRaw = localStorage.getItem("bystroi_location");
-    const locationStored = locationRaw ? JSON.parse(locationRaw) as { 
-      address?: string; 
-      city?: string;
-      manual?: boolean;
-    } : {};
-
-    // Приоритет: 1) параметры из URL, 2) вручную введенный адрес из localStorage (manual: true)
-    const manualAddress = locationStored.manual && (locationStored.address || locationStored.city) 
-      ? (locationStored.address || locationStored.city) 
-      : undefined;
-
-    if(userDataAuth) {
+    const cityFromUrl = searchParams.get("city");
+    const hasUrlParams = addressFromUrl || cityFromUrl;
+    
+    // ВАЖНО: Если параметров нет в URL - удаляем localStorage ПЕРЕД чтением адреса
+    if (!hasUrlParams && typeof window !== 'undefined') {
+      try {
+        // Удаляем localStorage СРАЗУ, чтобы другие компоненты не могли его прочитать
+        localStorage.removeItem('bystroi_location');
+        if (userDataAuth?.address) {
+          userDataAuth.address = '';
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+    
+    let newAddress: string;
+    let source: 'url' | 'ip' | 'manual';
+    if (hasUrlParams) {
+      // Если есть параметры в URL - используем их
+      addressManuallyEntered.current = true;
+      newAddress = addressFromUrl || cityFromUrl || '';
+      source = 'url';
+    } else {
+      // Если параметров нет в URL - используем ТОЛЬКО IP-определенный город
+      addressManuallyEntered.current = false;
+      if (typeof window !== 'undefined') {
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            if (parsed.city) {
+              newAddress = parsed.city;
+              source = 'ip';
+            } else {
+              newAddress = '';
+              source = 'ip';
+            }
+          } else {
+            newAddress = '';
+            source = 'ip';
+          }
+        } catch (e) {
+          newAddress = '';
+          source = 'ip';
+        }
+      } else {
+        newAddress = '';
+        source = 'ip';
+      }
+    }
+    
+    // ВСЕГДА обновляем адрес СИНХРОННО, без задержки
+    // Это гарантирует, что адрес установится до того, как другие эффекты смогут его перезаписать
+    addressSourceRef.current = source;
+    setAddressValue(newAddress);
+    setFormData(prev => ({
+      ...prev,
+      address: newAddress,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]); // ТОЛЬКО searchParams
+  
+  // Инициализация формы (имя и телефон) - только один раз
+  // ВАЖНО: НЕ обновляем адрес здесь, адрес управляется отдельно через addressForForm
+  useEffect(() => {
+    if (isFormInitialized.current) {
+      return;
+    }
+    
+    if (userDataAuth) {
       setFormData(prev => ({
         ...prev,
         name: userDataAuth!.name,
         phone: userDataAuth!.contragent_phone,
-        address: addressFromUrl || manualAddress || userDataAuth!.address || '',
+        // ВАЖНО: НЕ обновляем address здесь, он управляется через addressForForm
       }));
-      if(!userDataAuth.address) {
-        userDataAuth.address = formData.address;
-      }
-      
     } else {
       const savedData = localStorage.getItem('user_delivery_data');
+      let userData: UserData = { name: "", phone: "", address: "" };
       if (savedData) {
         try {
           const parsedData = JSON.parse(savedData);
           userData = {
             name: parsedData.name || "",
             phone: parsedData.phone || "",
-            address: parsedData.address || "",
+            address: "", // НЕ используем адрес из user_delivery_data
           };
         } catch (error) {
           console.error('Error parsing localStorage data:', error);
         }
       }
-
-      if (!userData) {
-        userData = {
-          name: "",
-          phone: "",
-          address: "",
-        };
-      }
-      
       setFormData(prev => ({
         ...prev,
-        name: userData!.name,
-        phone: userData!.phone,
-        address: addressFromUrl || manualAddress || userData!.address || "",
+        name: userData.name,
+        phone: userData.phone,
+        // ВАЖНО: НЕ обновляем address здесь, он управляется через addressForForm
       }));
     }
-  }, [contragentPhone, isInitialized, searchParams]);
+    
+    isFormInitialized.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userDataAuth]); // Инициализируем только один раз
+  
+  // ЗАЩИТА: Если адрес был установлен из IP или URL, не позволяем другим эффектам его перезаписать
+  useEffect(() => {
+    // Если адрес был установлен из IP или URL, но formData.address отличается - синхронизируем
+    if (addressSourceRef.current === 'ip' || addressSourceRef.current === 'url') {
+      if (formData.address !== addressValue) {
+        setFormData(prev => ({
+          ...prev,
+          address: addressValue,
+        }));
+      }
+    }
+  }, [addressValue, formData.address]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
+    
+    if (id === 'address') {
+      // Для адреса обновляем отдельное состояние
+      setAddressValue(value);
+    }
+    
     setFormData(prev => ({ ...prev, [id]: value }));
     
     // Если пользователь вручную вводит адрес - сохраняем его в bystroi_location с флагом manual: true и обновляем URL
-    if (id === 'address' && value.trim() && typeof window !== 'undefined') {
+    if (id === 'address' && typeof window !== 'undefined') {
+      const addressValue = value.trim();
+      
+      // Помечаем, что адрес был введен пользователем вручную
+      if (addressValue) {
+        addressManuallyEntered.current = true;
+      } else {
+        addressManuallyEntered.current = false;
+      }
+      
       try {
         const storageKey = 'bystroi_location';
         const existing = localStorage.getItem(storageKey);
@@ -292,29 +384,54 @@ function PaymentContent() {
           manual?: boolean;
         } : {};
         
-        const addressValue = value.trim();
-        
-        // Сохраняем вручную введенный адрес
-        localStorage.setItem(storageKey, JSON.stringify({
-          ...parsed,
-          address: addressValue,
-          city: undefined, // Очищаем город, если введен конкретный адрес
-          manual: true, // Флаг, что адрес введен вручную
-        }));
-        
-        // Обновляем URL с параметрами адреса
-        const newParams = new URLSearchParams(searchParams.toString());
-        newParams.set('address', addressValue);
-        newParams.delete('city'); // Удаляем город, если введен конкретный адрес
-        if (coordinates) {
-          newParams.set('lat', String(coordinates.lat));
-          newParams.set('lon', String(coordinates.lon));
-        } else if (parsed.lat != null && parsed.lon != null) {
-          newParams.set('lat', String(parsed.lat));
-          newParams.set('lon', String(parsed.lon));
+        if (addressValue) {
+          // Сохраняем вручную введенный адрес ТОЛЬКО если пользователь действительно ввел его вручную
+          // (не из IP-определенного города)
+          const isIpDetectedCity = (() => {
+            try {
+              const detected = sessionStorage.getItem('detected_city');
+              if (detected) {
+                const parsed = JSON.parse(detected);
+                return parsed.city === addressValue;
+              }
+            } catch (e) {
+              // Игнорируем ошибки
+            }
+            return false;
+          })();
+          
+          // Обновляем URL с параметрами адреса ПЕРВЫМ, чтобы параметры появились в URL
+          const newParams = new URLSearchParams(searchParams.toString());
+          newParams.set('address', addressValue);
+          newParams.delete('city'); // Удаляем город, если введен конкретный адрес
+          if (coordinates) {
+            newParams.set('lat', String(coordinates.lat));
+            newParams.set('lon', String(coordinates.lon));
+          } else if (parsed.lat != null && parsed.lon != null) {
+            newParams.set('lat', String(parsed.lat));
+            newParams.set('lon', String(parsed.lon));
+          }
+          const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+          router.push(newUrl, { scroll: false });
+          
+          // Сохраняем в localStorage ТОЛЬКО после обновления URL (когда параметры уже есть в URL)
+          // И только если это не IP-определенный город
+          if (!isIpDetectedCity) {
+            localStorage.setItem(storageKey, JSON.stringify({
+              ...parsed,
+              address: addressValue,
+              city: undefined, // Очищаем город, если введен конкретный адрес
+              manual: true, // Флаг, что адрес введен вручную
+            }));
+          }
+        } else {
+          // Если адрес пустой, удаляем его из URL и localStorage
+          localStorage.removeItem(storageKey);
+          const newParams = new URLSearchParams(searchParams.toString());
+          newParams.delete('address');
+          const newUrl = `${window.location.pathname}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
+          router.push(newUrl, { scroll: false });
         }
-        const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-        router.push(newUrl, { scroll: false });
       } catch (error) {
         console.error("Error saving address to localStorage:", error);
       }
@@ -654,7 +771,7 @@ function PaymentContent() {
                       id="address"
                       type="text"
                       placeholder="ул. Пушкина, д. Колотушкина (не обязательно)"
-                      value={formData.address}
+                      value={addressValue}
                       onChange={handleInputChange}
                       disabled={isLoading}
                       className="pr-10 h-10 md:h-11 text-sm md:text-base"
