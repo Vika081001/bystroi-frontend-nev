@@ -61,6 +61,7 @@ function PaymentContent() {
     totalPrice 
   } = useCartItems(cart?.goods || []);
   const createOrderMutation = useCreateOrder();
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -148,6 +149,39 @@ function PaymentContent() {
           }));
           if (userDataAuth) {
             userDataAuth.address = address;
+          }
+          
+          // Сохраняем адрес в localStorage и обновляем URL
+          try {
+            const storageKey = 'bystroi_location';
+            const existing = localStorage.getItem(storageKey);
+            const parsed = existing ? JSON.parse(existing) as { 
+              address?: string; 
+              city?: string; 
+              lat?: number; 
+              lon?: number;
+              manual?: boolean;
+            } : {};
+            
+            localStorage.setItem(storageKey, JSON.stringify({
+              ...parsed,
+              address: address,
+              city: undefined,
+              lat: coords.lat,
+              lon: coords.lon,
+              manual: true, // Геолокация тоже считается вручную введенным адресом
+            }));
+            
+            // Обновляем URL
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.set('address', address);
+            newParams.set('lat', String(coords.lat));
+            newParams.set('lon', String(coords.lon));
+            newParams.delete('city');
+            const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+            router.push(newUrl, { scroll: false });
+          } catch (error) {
+            console.error("Error saving geolocation address:", error);
           }
         } catch (error) {
           console.error("Ошибка при получении адреса:", error);
@@ -245,7 +279,7 @@ function PaymentContent() {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
     
-    // Если пользователь вручную вводит адрес - сохраняем его в bystroi_location с флагом manual: true
+    // Если пользователь вручную вводит адрес - сохраняем его в bystroi_location с флагом manual: true и обновляем URL
     if (id === 'address' && value.trim() && typeof window !== 'undefined') {
       try {
         const storageKey = 'bystroi_location';
@@ -258,13 +292,29 @@ function PaymentContent() {
           manual?: boolean;
         } : {};
         
+        const addressValue = value.trim();
+        
         // Сохраняем вручную введенный адрес
         localStorage.setItem(storageKey, JSON.stringify({
           ...parsed,
-          address: value.trim(),
+          address: addressValue,
           city: undefined, // Очищаем город, если введен конкретный адрес
           manual: true, // Флаг, что адрес введен вручную
         }));
+        
+        // Обновляем URL с параметрами адреса
+        const newParams = new URLSearchParams(searchParams.toString());
+        newParams.set('address', addressValue);
+        newParams.delete('city'); // Удаляем город, если введен конкретный адрес
+        if (coordinates) {
+          newParams.set('lat', String(coordinates.lat));
+          newParams.set('lon', String(coordinates.lon));
+        } else if (parsed.lat != null && parsed.lon != null) {
+          newParams.set('lat', String(parsed.lat));
+          newParams.set('lon', String(parsed.lon));
+        }
+        const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+        router.push(newUrl, { scroll: false });
       } catch (error) {
         console.error("Error saving address to localStorage:", error);
       }
