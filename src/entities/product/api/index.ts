@@ -1,62 +1,31 @@
 import axios from "axios";
-import { AxiosResponse } from "axios";
 
 import { GetProductDto, GetProductsDto } from "../model/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://app.tablecrm.com/api/v1/mp";
 
 /**
- * Извлекает автоматически определенный город из заголовков HTTP ответа
+ * Извлекает автоматически определенный город из тела JSON ответа
+ * Бэкенд возвращает detected_city, detected_lat, detected_lon в теле ответа
  */
-export function getDetectedCityFromResponse(response: AxiosResponse): {
+export function getDetectedCityFromResponse(data: any): {
   city: string;
   lat: number;
   lon: number;
 } | null {
   try {
-    const headers = response.headers;
-    
-    // AxiosHeaders может иметь метод get(), пробуем разные способы доступа
-    let cityHeader: string | undefined;
-    let latHeader: string | undefined;
-    let lonHeader: string | undefined;
-    
-    // Пробуем через прямое обращение
-    cityHeader = headers['x-detected-city'] || headers['X-Detected-City'];
-    latHeader = headers['x-detected-lat'] || headers['X-Detected-Lat'];
-    lonHeader = headers['x-detected-lon'] || headers['X-Detected-Lon'];
-    
-    // Если не нашли, пробуем через метод get() (если есть)
-    if (!cityHeader && typeof (headers as any).get === 'function') {
-      cityHeader = (headers as any).get('x-detected-city') || (headers as any).get('X-Detected-City');
-      latHeader = (headers as any).get('x-detected-lat') || (headers as any).get('X-Detected-Lat');
-      lonHeader = (headers as any).get('x-detected-lon') || (headers as any).get('X-Detected-Lon');
-    }
-    
-    // Если все еще не нашли, пробуем через Object.keys и поиск
-    if (!cityHeader) {
-      const headerKeys = Object.keys(headers);
-      const cityKey = headerKeys.find(k => k.toLowerCase() === 'x-detected-city');
-      const latKey = headerKeys.find(k => k.toLowerCase() === 'x-detected-lat');
-      const lonKey = headerKeys.find(k => k.toLowerCase() === 'x-detected-lon');
-      
-      if (cityKey) cityHeader = headers[cityKey] as string;
-      if (latKey) latHeader = headers[latKey] as string;
-      if (lonKey) lonHeader = headers[lonKey] as string;
-    }
-    
-    if (cityHeader && latHeader && lonHeader) {
-      // Бэкенд кодирует город через quote(), декодируем через decodeURIComponent
-      const city = decodeURIComponent(String(cityHeader));
-      const lat = parseFloat(String(latHeader));
-      const lon = parseFloat(String(lonHeader));
+    // Проверяем наличие полей в теле ответа
+    if (data?.detected_city && data?.detected_lat != null && data?.detected_lon != null) {
+      const city = String(data.detected_city);
+      const lat = parseFloat(String(data.detected_lat));
+      const lon = parseFloat(String(data.detected_lon));
       
       if (!Number.isNaN(lat) && !Number.isNaN(lon) && city) {
         return { city, lat, lon };
       }
     }
   } catch (error) {
-    console.error("Error parsing detected city from headers:", error);
+    console.error("Error parsing detected city from response body:", error);
   }
   
   return null;
@@ -105,7 +74,7 @@ export const fetchProducts = async (params: GetProductsDto) => {
       }
     });
     
-    // Используем fetch для получения данных и проверки заголовков
+    // Используем fetch для получения данных
     const url = new URL(`${API_BASE_URL}/products`);
     Object.entries(requestParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -120,30 +89,18 @@ export const fetchProducts = async (params: GetProductsDto) => {
       },
     });
     
-    // Пытаемся извлечь автоматически определенный город из заголовков
-    const detectedCityFromFetch = fetchResponse.headers.get('X-Detected-City');
-    const detectedLatFromFetch = fetchResponse.headers.get('X-Detected-Lat');
-    const detectedLonFromFetch = fetchResponse.headers.get('X-Detected-Lon');
+    // Парсим данные из ответа
+    const fetchData = await fetchResponse.json();
     
-    if (detectedCityFromFetch && detectedLatFromFetch && detectedLonFromFetch) {
-      try {
-        const city = decodeURIComponent(detectedCityFromFetch);
-        const lat = parseFloat(detectedLatFromFetch);
-        const lon = parseFloat(detectedLonFromFetch);
-        if (!Number.isNaN(lat) && !Number.isNaN(lon) && city) {
-          const detected = { city, lat, lon };
-          console.log('[DEBUG] Автоматически определенный город из IP:', detected);
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('detected_city', JSON.stringify(detected));
-          }
-        }
-      } catch (e) {
-        console.error('Ошибка при парсинге автоматически определенного города:', e);
+    // Извлекаем автоматически определенный город из тела ответа
+    const detectedCity = getDetectedCityFromResponse(fetchData);
+    if (detectedCity) {
+      console.log('[DEBUG] Автоматически определенный город из IP:', detectedCity);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('detected_city', JSON.stringify(detectedCity));
       }
     }
     
-    // Парсим и возвращаем данные
-    const fetchData = await fetchResponse.json();
     return fetchData;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -152,7 +109,7 @@ export const fetchProducts = async (params: GetProductsDto) => {
 };
 
 // Функция для получения автоматически определенного города (делает запрос без параметров локации)
-export const fetchDetectedCity = async (): Promise<{ city?: string; lat?: number; lon?: number } | null> => {
+export const fetchDetectedCity = async (): Promise<{ city: string; lat: number; lon: number } | null> => {
   try {
     const response = await axios.get(`${API_BASE_URL}/products`, {
       params: { size: 1 },
@@ -161,7 +118,8 @@ export const fetchDetectedCity = async (): Promise<{ city?: string; lat?: number
       },
     });
     
-    return getDetectedCityFromResponse(response);
+    // Бэкенд возвращает detected_city, detected_lat, detected_lon в теле ответа
+    return getDetectedCityFromResponse(response.data);
   } catch (error) {
     console.error("Error fetching detected city:", error);
     return null;
