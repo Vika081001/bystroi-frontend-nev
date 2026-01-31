@@ -121,12 +121,30 @@ export const useCartItems = (goods: OrderGood[]) => {
     new Set(goods.map(item => item.nomenclature_id))
   );
   
-  // Получаем координаты и адрес из URL
+  // Получаем координаты и адрес из URL, если нет - из sessionStorage (автоматически определенный город)
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const lat = searchParams?.get('lat') ? Number(searchParams.get('lat')) : undefined;
-  const lon = searchParams?.get('lon') ? Number(searchParams.get('lon')) : undefined;
+  let lat = searchParams?.get('lat') ? Number(searchParams.get('lat')) : undefined;
+  let lon = searchParams?.get('lon') ? Number(searchParams.get('lon')) : undefined;
   const address = searchParams?.get('address') || undefined;
   const city = searchParams?.get('city') || undefined;
+  
+  // Если координат нет в URL, проверяем sessionStorage
+  if ((lat == null || lon == null) && typeof window !== 'undefined') {
+    try {
+      const detected = sessionStorage.getItem('detected_city');
+      if (detected) {
+        const parsed = JSON.parse(detected);
+        if (lat == null && parsed.lat != null) {
+          lat = parsed.lat;
+        }
+        if (lon == null && parsed.lon != null) {
+          lon = parsed.lon;
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+  }
 
   const productQueries = useQueries({
     queries: uniqueProductIds.map((productId) => ({

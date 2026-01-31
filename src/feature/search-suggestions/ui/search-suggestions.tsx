@@ -126,8 +126,30 @@ export const SearchSuggestions = ({
     
     setLoadingPopular(true);
     try {
+      // Получаем координаты из sessionStorage (автоматически определенный город)
+      const params = new URLSearchParams({
+        size: '6',
+        sort_by: 'total_sold',
+        sort_order: 'desc',
+      });
+      
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null) {
+            params.append('lat', String(parsed.lat));
+          }
+          if (parsed.lon != null) {
+            params.append('lon', String(parsed.lon));
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+      
       const response = await fetch(
-        `https://app.tablecrm.com/api/v1/mp/products?size=6&sort_by=total_sold&sort_order=desc`
+        `https://app.tablecrm.com/api/v1/mp/products?${params.toString()}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -169,8 +191,30 @@ export const SearchSuggestions = ({
     setSearchResults(prev => ({ ...prev, loading: true, error: null }));
     
     try {
+      // Получаем координаты из sessionStorage (автоматически определенный город)
+      const params = new URLSearchParams({
+        size: '20',
+        sort_by: 'name',
+        sort_order: 'asc',
+      });
+      
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null) {
+            params.append('lat', String(parsed.lat));
+          }
+          if (parsed.lon != null) {
+            params.append('lon', String(parsed.lon));
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+      
       const response = await fetch(
-        `https://app.tablecrm.com/api/v1/mp/products?size=20&sort_by=name&sort_order=asc`
+        `https://app.tablecrm.com/api/v1/mp/products?${params.toString()}`
       );
       
       if (!response.ok) {

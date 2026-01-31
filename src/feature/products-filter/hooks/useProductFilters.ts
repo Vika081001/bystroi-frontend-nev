@@ -79,16 +79,44 @@ export const useProductFilters = () => {
         params.seller_id = Number(searchParams.get("seller_id"));
       }
       // Координаты для выбора ближайшей цены
+      // Сначала проверяем URL, если нет - берем из sessionStorage (автоматически определенный город)
       if (searchParams.has("lat")) {
         const lat = Number(searchParams.get("lat"));
         if (!Number.isNaN(lat)) {
           params.lat = lat;
         }
+      } else if (typeof window !== 'undefined') {
+        // Если координат нет в URL, проверяем sessionStorage (автоматически определенный город)
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            if (parsed.lat != null) {
+              params.lat = parsed.lat;
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
+        }
       }
+      
       if (searchParams.has("lon")) {
         const lon = Number(searchParams.get("lon"));
         if (!Number.isNaN(lon)) {
           params.lon = lon;
+        }
+      } else if (typeof window !== 'undefined') {
+        // Если координат нет в URL, проверяем sessionStorage (автоматически определенный город)
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            if (parsed.lon != null) {
+              params.lon = parsed.lon;
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
         }
       }
     } catch (error) {

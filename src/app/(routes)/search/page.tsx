@@ -142,11 +142,37 @@ function SearchPageContent() {
       }
 
       // Координаты для выбора ближайшей цены
+      // Сначала проверяем URL, если нет - берем из sessionStorage (автоматически определенный город)
       if (lat) {
         params.append("lat", lat);
+      } else if (typeof window !== 'undefined') {
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            if (parsed.lat != null) {
+              params.append("lat", String(parsed.lat));
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
+        }
       }
+      
       if (lon) {
         params.append("lon", lon);
+      } else if (typeof window !== 'undefined') {
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            if (parsed.lon != null) {
+              params.append("lon", String(parsed.lon));
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
+        }
       }
 
       const response = await fetch(

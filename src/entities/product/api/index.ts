@@ -60,11 +60,37 @@ export const fetchProducts = async (params: GetProductsDto) => {
     }
     
     // Передаем координаты только если они есть
+    // Если координат нет в params, но есть в sessionStorage (автоматически определенный город) - используем их
     if (params.lat != null) {
       requestParams.lat = params.lat;
+    } else if (typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null) {
+            requestParams.lat = parsed.lat;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
     }
+    
     if (params.lon != null) {
       requestParams.lon = params.lon;
+    } else if (typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lon != null) {
+            requestParams.lon = parsed.lon;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
     }
     
     // Удаляем undefined значения из параметров
@@ -134,9 +160,30 @@ export const fetchProduct = async (params: GetProductDto) => {
     // Это нужно для того, чтобы бэкенд фильтровал цены по городу, а не только сортировал по расстоянию
     const addressParam = params.address || params.city;
     
+    let lat = params.lat;
+    let lon = params.lon;
+    
+    // Если координат нет в параметрах, проверяем sessionStorage (автоматически определенный город)
+    if ((lat == null || lon == null) && typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (lat == null && parsed.lat != null) {
+            lat = parsed.lat;
+          }
+          if (lon == null && parsed.lon != null) {
+            lon = parsed.lon;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+    
     const requestParams: { lat?: number; lon?: number; address?: string } = {
-      lat: params.lat,
-      lon: params.lon,
+      lat: lat,
+      lon: lon,
       address: addressParam,
     };
     

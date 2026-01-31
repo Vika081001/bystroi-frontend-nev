@@ -39,16 +39,42 @@ export const Deals = () => {
       baseParams.seller_id = Number(sellerId);
     }
     // Координаты для выбора ближайшей цены
+    // Сначала проверяем URL, если нет - берем из sessionStorage (автоматически определенный город)
     if (lat) {
       const latNum = Number(lat);
       if (!Number.isNaN(latNum)) {
         baseParams.lat = latNum;
       }
+    } else if (typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null) {
+            baseParams.lat = parsed.lat;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
     }
+    
     if (lon) {
       const lonNum = Number(lon);
       if (!Number.isNaN(lonNum)) {
         baseParams.lon = lonNum;
+      }
+    } else if (typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lon != null) {
+            baseParams.lon = parsed.lon;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
       }
     }
     
@@ -88,16 +114,42 @@ export const Deals = () => {
     }
     
     // Координаты для выбора ближайшей цены
+    // Сначала проверяем URL, если нет - берем из sessionStorage (автоматически определенный город)
     if (lat) {
       const latNum = Number(lat);
       if (!Number.isNaN(latNum)) {
         baseParams.lat = latNum;
       }
+    } else if (typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null) {
+            baseParams.lat = parsed.lat;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
     }
+    
     if (lon) {
       const lonNum = Number(lon);
       if (!Number.isNaN(lonNum)) {
         baseParams.lon = lonNum;
+      }
+    } else if (typeof window !== 'undefined') {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lon != null) {
+            baseParams.lon = parsed.lon;
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
       }
     }
     

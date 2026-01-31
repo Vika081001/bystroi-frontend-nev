@@ -1,5 +1,27 @@
 import { City } from "@/shared/types/city";
 
+/**
+ * Получает координаты автоматически определенного города из sessionStorage
+ * Используется для передачи координат в запросы к API без добавления их в URL
+ */
+export function getDetectedCityCoords(): { lat: number; lon: number } | null {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const detected = sessionStorage.getItem('detected_city');
+    if (detected) {
+      const parsed = JSON.parse(detected);
+      if (parsed.lat != null && parsed.lon != null) {
+        return { lat: parsed.lat, lon: parsed.lon };
+      }
+    }
+  } catch (e) {
+    // Игнорируем ошибки
+  }
+  
+  return null;
+}
+
 const CITIES_CACHE_KEY = "bystroi_cities_cache";
 const CITIES_URL = "https://raw.githubusercontent.com/arbaev/russia-cities/refs/heads/master/russia-cities.json";
 
