@@ -187,14 +187,23 @@ function PaymentContent() {
     let userData: UserData | null = null;
     const addressFromUrl = searchParams.get("address");
     const locationRaw = localStorage.getItem("bystroi_location");
-    const locationStored = locationRaw ? JSON.parse(locationRaw) as { address?: string } : {};
+    const locationStored = locationRaw ? JSON.parse(locationRaw) as { 
+      address?: string; 
+      city?: string;
+      manual?: boolean;
+    } : {};
+
+    // Приоритет: 1) параметры из URL, 2) вручную введенный адрес из localStorage (manual: true)
+    const manualAddress = locationStored.manual && (locationStored.address || locationStored.city) 
+      ? (locationStored.address || locationStored.city) 
+      : undefined;
 
     if(userDataAuth) {
       setFormData(prev => ({
         ...prev,
         name: userDataAuth!.name,
         phone: userDataAuth!.contragent_phone,
-        address: addressFromUrl || locationStored.address || userDataAuth!.address || '',
+        address: addressFromUrl || manualAddress || userDataAuth!.address || '',
       }));
       if(!userDataAuth.address) {
         userDataAuth.address = formData.address;
@@ -227,7 +236,7 @@ function PaymentContent() {
         ...prev,
         name: userData!.name,
         phone: userData!.phone,
-        address: addressFromUrl || locationStored.address || userData!.address || "",
+        address: addressFromUrl || manualAddress || userData!.address || "",
       }));
     }
   }, [contragentPhone, isInitialized, searchParams]);
@@ -235,6 +244,31 @@ function PaymentContent() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
+    
+    // Если пользователь вручную вводит адрес - сохраняем его в bystroi_location с флагом manual: true
+    if (id === 'address' && value.trim() && typeof window !== 'undefined') {
+      try {
+        const storageKey = 'bystroi_location';
+        const existing = localStorage.getItem(storageKey);
+        const parsed = existing ? JSON.parse(existing) as { 
+          address?: string; 
+          city?: string; 
+          lat?: number; 
+          lon?: number;
+          manual?: boolean;
+        } : {};
+        
+        // Сохраняем вручную введенный адрес
+        localStorage.setItem(storageKey, JSON.stringify({
+          ...parsed,
+          address: value.trim(),
+          city: undefined, // Очищаем город, если введен конкретный адрес
+          manual: true, // Флаг, что адрес введен вручную
+        }));
+      } catch (error) {
+        console.error("Error saving address to localStorage:", error);
+      }
+    }
   };
 
   const closeModal = () => {
@@ -244,6 +278,33 @@ function PaymentContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem("user_delivery_data", JSON.stringify(formData));
+    
+    // Сохраняем вручную введенный адрес в bystroi_location с флагом manual: true
+    if (formData.address && formData.address.trim() && typeof window !== 'undefined') {
+      try {
+        const storageKey = 'bystroi_location';
+        const existing = localStorage.getItem(storageKey);
+        const parsed = existing ? JSON.parse(existing) as { 
+          address?: string; 
+          city?: string; 
+          lat?: number; 
+          lon?: number;
+          manual?: boolean;
+        } : {};
+        
+        // Сохраняем адрес из формы как вручную введенный
+        localStorage.setItem(storageKey, JSON.stringify({
+          ...parsed,
+          address: formData.address.trim(),
+          city: undefined, // Очищаем город, если введен конкретный адрес
+          lat: coordinates?.lat || parsed.lat,
+          lon: coordinates?.lon || parsed.lon,
+          manual: true, // Флаг, что адрес введен вручную
+        }));
+      } catch (error) {
+        console.error("Error saving address to localStorage:", error);
+      }
+    }
     
     if (!cart || items.length === 0) {
       setOrderModal({
