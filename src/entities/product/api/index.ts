@@ -70,6 +70,7 @@ export const fetchProducts = async (params: GetProductsDto) => {
           const parsed = JSON.parse(detected);
           if (parsed.lat != null) {
             requestParams.lat = parsed.lat;
+            console.log('[DEBUG fetchProducts] Используем lat из sessionStorage:', parsed.lat);
           }
         }
       } catch (e) {
@@ -86,12 +87,20 @@ export const fetchProducts = async (params: GetProductsDto) => {
           const parsed = JSON.parse(detected);
           if (parsed.lon != null) {
             requestParams.lon = parsed.lon;
+            console.log('[DEBUG fetchProducts] Используем lon из sessionStorage:', parsed.lon);
           }
         }
       } catch (e) {
         // Игнорируем ошибки
       }
     }
+    
+    console.log('[DEBUG fetchProducts] Параметры запроса:', {
+      lat: requestParams.lat,
+      lon: requestParams.lon,
+      address: requestParams.address,
+      city: params.city,
+    });
     
     // Удаляем undefined значения из параметров
     Object.keys(requestParams).forEach(key => {
@@ -171,9 +180,11 @@ export const fetchProduct = async (params: GetProductDto) => {
           const parsed = JSON.parse(detected);
           if (lat == null && parsed.lat != null) {
             lat = parsed.lat;
+            console.log('[DEBUG fetchProduct] Используем lat из sessionStorage:', parsed.lat);
           }
           if (lon == null && parsed.lon != null) {
             lon = parsed.lon;
+            console.log('[DEBUG fetchProduct] Используем lon из sessionStorage:', parsed.lon);
           }
         }
       } catch (e) {
@@ -186,6 +197,13 @@ export const fetchProduct = async (params: GetProductDto) => {
       lon: lon,
       address: addressParam,
     };
+    
+    console.log('[DEBUG fetchProduct] Параметры запроса:', {
+      product_id: params.product_id,
+      lat: requestParams.lat,
+      lon: requestParams.lon,
+      address: requestParams.address,
+    });
     
     // Удаляем undefined значения из параметров
     Object.keys(requestParams).forEach(key => {

@@ -3,8 +3,9 @@ import { AvatarFallback } from "@radix-ui/react-avatar";
 import { Warehouse } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-import { Product } from "@/entities/product";
+import { Product, useProduct } from "@/entities/product";
 import { ProductImages } from "@/entities/product/ui/product-images";
 import { useReviews } from "@/shared/hooks/useReviews";
 
@@ -32,7 +33,7 @@ const ProductInfo = ({
   seller_description,
   rating: productRating,
   reviews_count: productReviewsCount,
-  price,
+  price: initialPrice,
   description_short,
   description_long,
   manufacturer_name,
@@ -44,6 +45,68 @@ const ProductInfo = ({
   ...product
 }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const searchParams = useSearchParams();
+  
+  // Получаем координаты из URL или sessionStorage для обновления цены на клиенте
+  const latFromUrl = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
+  const lonFromUrl = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
+  const addressFromUrl = searchParams.get('address') || undefined;
+  const cityFromUrl = searchParams.get('city') || undefined;
+  
+  // Получаем координаты из sessionStorage, если их нет в URL
+  const [detectedCoords, setDetectedCoords] = useState<{ lat?: number; lon?: number } | null>(null);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !latFromUrl && !lonFromUrl) {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null && parsed.lon != null) {
+            setDetectedCoords({ lat: parsed.lat, lon: parsed.lon });
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+    
+    // Слушаем обновления detected_city
+    const handleDetectedCityUpdated = () => {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null && parsed.lon != null) {
+            setDetectedCoords({ lat: parsed.lat, lon: parsed.lon });
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    };
+    
+    window.addEventListener('detectedCityUpdated', handleDetectedCityUpdated as EventListener);
+    return () => {
+      window.removeEventListener('detectedCityUpdated', handleDetectedCityUpdated as EventListener);
+    };
+  }, [latFromUrl, lonFromUrl]);
+  
+  // Используем координаты из URL или из sessionStorage
+  const lat = latFromUrl ?? detectedCoords?.lat;
+  const lon = lonFromUrl ?? detectedCoords?.lon;
+  
+  // Обновляем товар на клиенте с правильными координатами
+  const { data: updatedProduct } = useProduct({
+    product_id: id,
+    lat,
+    lon,
+    address: addressFromUrl,
+    city: cityFromUrl,
+  });
+  
+  // Используем обновленную цену, если товар обновился
+  const price = updatedProduct?.price ?? initialPrice;
   
   const { data: reviewsData, isLoading: reviewsLoading } = useReviews({
     entity_type: "nomenclature",

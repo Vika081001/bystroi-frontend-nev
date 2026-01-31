@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart, Minus, Plus, Share2 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useAddToCart } from "@/entities/cart/model/hooks";
@@ -49,22 +49,71 @@ export const AddToCart = ({
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false);
   const dataUser = useDataUser();
   
-  // Получаем координаты из URL
-  const lat = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
-  const lon = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
+  // Получаем координаты из URL или sessionStorage
+  const latFromUrl = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
+  const lonFromUrl = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
+  const addressFromUrl = searchParams.get('address') || undefined;
+  const cityFromUrl = searchParams.get('city') || undefined;
+  
+  // Получаем координаты из sessionStorage, если их нет в URL
+  const [detectedCoords, setDetectedCoords] = useState<{ lat?: number; lon?: number } | null>(null);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !latFromUrl && !lonFromUrl) {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null && parsed.lon != null) {
+            setDetectedCoords({ lat: parsed.lat, lon: parsed.lon });
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+    
+    // Слушаем обновления detected_city
+    const handleDetectedCityUpdated = () => {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (parsed.lat != null && parsed.lon != null) {
+            setDetectedCoords({ lat: parsed.lat, lon: parsed.lon });
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    };
+    
+    window.addEventListener('detectedCityUpdated', handleDetectedCityUpdated as EventListener);
+    return () => {
+      window.removeEventListener('detectedCityUpdated', handleDetectedCityUpdated as EventListener);
+    };
+  }, [latFromUrl, lonFromUrl]);
+  
+  // Используем координаты из URL или из sessionStorage
+  const lat = latFromUrl ?? detectedCoords?.lat;
+  const lon = lonFromUrl ?? detectedCoords?.lon;
 
   const formatPrice = (price: number) => {
     return `${price?.toLocaleString('ru-RU')}₽/${unitName === null ? "шт." : unitName}`;
   };
 
-  const loadProductDetails = async () => {
+  const loadProductDetails = React.useCallback(async () => {
     setIsLoadingProduct(true);
     try {
+      console.log('[DEBUG AddToCart] Загрузка товара с координатами:', { lat, lon, address: addressFromUrl, city: cityFromUrl });
       const product = await fetchProduct({ 
         product_id: productId,
         lat,
         lon,
+        address: addressFromUrl,
+        city: cityFromUrl,
       });
+      console.log('[DEBUG AddToCart] Получена цена товара:', product.price);
       setProductData({
         price: product.price,
         name: product.name,
@@ -80,7 +129,14 @@ export const AddToCart = ({
     } finally {
       setIsLoadingProduct(false);
     }
-  };
+  }, [productId, lat, lon, addressFromUrl, cityFromUrl, initialPrice, initialName, initialImages]);
+  
+  // Автоматически загружаем товар при изменении координат
+  useEffect(() => {
+    if (lat != null && lon != null && !productData) {
+      loadProductDetails();
+    }
+  }, [lat, lon, productData, loadProductDetails]);
 
   const clearMessages = () => {
     setSuccessMessage(null);
