@@ -1,6 +1,7 @@
 // entities/cart/model/hooks.ts
 "use client"
 import { useMutation, useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import * as cartApi from "../api";
 import { AddToCartDto, RemoveFromCartDto } from "./types";
@@ -121,16 +122,26 @@ export const useCartItems = (goods: OrderGood[]) => {
     new Set(goods.map(item => item.nomenclature_id))
   );
   
-  // Приоритет: 1) параметры из URL, 2) вручную введенный адрес из localStorage, 3) автоматически определенный город
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  let lat = searchParams?.get('lat') ? Number(searchParams.get('lat')) : undefined;
-  let lon = searchParams?.get('lon') ? Number(searchParams.get('lon')) : undefined;
-  let address = searchParams?.get('address') || undefined;
-  let city = searchParams?.get('city') || undefined;
-  
-  // Если параметров нет в URL, проверяем вручную введенный адрес из localStorage
-  if ((!address && !city) || lat == null || lon == null) {
-    if (typeof window !== 'undefined') {
+  // Состояние для отслеживания изменений адреса в localStorage
+  const [locationParams, setLocationParams] = useState<{
+    lat?: number;
+    lon?: number;
+    address?: string;
+    city?: string;
+  }>(() => {
+    // Инициализация при первом рендере
+    if (typeof window === 'undefined') {
+      return {};
+    }
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    let lat = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
+    let lon = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
+    let address = searchParams.get('address') || undefined;
+    let city = searchParams.get('city') || undefined;
+    
+    // Если параметров нет в URL, проверяем вручную введенный адрес из localStorage
+    if ((!address && !city) || lat == null || lon == null) {
       try {
         const storageKey = 'bystroi_location';
         const stored = localStorage.getItem(storageKey);
@@ -160,30 +171,131 @@ export const useCartItems = (goods: OrderGood[]) => {
         // Игнорируем ошибки
       }
     }
-  }
-  
-  // Если координат все еще нет, проверяем sessionStorage (автоматически определенный город)
-  if ((lat == null || lon == null) && typeof window !== 'undefined') {
-    try {
-      const detected = sessionStorage.getItem('detected_city');
-      if (detected) {
-        const parsed = JSON.parse(detected);
-        if (lat == null && parsed.lat != null) {
-          lat = parsed.lat;
+    
+    // Если координат все еще нет, проверяем sessionStorage (автоматически определенный город)
+    if ((lat == null || lon == null)) {
+      try {
+        const detected = sessionStorage.getItem('detected_city');
+        if (detected) {
+          const parsed = JSON.parse(detected);
+          if (lat == null && parsed.lat != null) {
+            lat = parsed.lat;
+          }
+          if (lon == null && parsed.lon != null) {
+            lon = parsed.lon;
+          }
         }
-        if (lon == null && parsed.lon != null) {
-          lon = parsed.lon;
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+    
+    return { lat, lon, address, city };
+  });
+  
+  // Отслеживаем изменения в localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const updateLocationParams = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      let lat = searchParams.get('lat') ? Number(searchParams.get('lat')) : undefined;
+      let lon = searchParams.get('lon') ? Number(searchParams.get('lon')) : undefined;
+      let address = searchParams.get('address') || undefined;
+      let city = searchParams.get('city') || undefined;
+      
+      // Если параметров нет в URL, проверяем вручную введенный адрес из localStorage
+      if ((!address && !city) || lat == null || lon == null) {
+        try {
+          const storageKey = 'bystroi_location';
+          const stored = localStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as { 
+              address?: string; 
+              city?: string; 
+              lat?: number; 
+              lon?: number;
+              manual?: boolean;
+            };
+            // Если адрес был введен вручную, используем его
+            if (parsed.manual && (parsed.address || parsed.city)) {
+              if (!address && !city) {
+                address = parsed.address;
+                city = parsed.city;
+              }
+              if (lat == null && parsed.lat != null) {
+                lat = parsed.lat;
+              }
+              if (lon == null && parsed.lon != null) {
+                lon = parsed.lon;
+              }
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
         }
       }
-    } catch (e) {
-      // Игнорируем ошибки
-    }
-  }
+      
+      // Если координат все еще нет, проверяем sessionStorage (автоматически определенный город)
+      if ((lat == null || lon == null)) {
+        try {
+          const detected = sessionStorage.getItem('detected_city');
+          if (detected) {
+            const parsed = JSON.parse(detected);
+            if (lat == null && parsed.lat != null) {
+              lat = parsed.lat;
+            }
+            if (lon == null && parsed.lon != null) {
+              lon = parsed.lon;
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
+        }
+      }
+      
+      setLocationParams({ lat, lon, address, city });
+    };
+    
+    // Обновляем при изменении localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'bystroi_location') {
+        updateLocationParams();
+      }
+    };
+    
+    // Обновляем при изменении URL
+    const handlePopState = () => {
+      updateLocationParams();
+    };
+    
+    // Первоначальная проверка
+    updateLocationParams();
+    
+    // Слушаем изменения localStorage (из других вкладок)
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('popstate', handlePopState);
+    
+    // Периодически проверяем изменения (для изменений в той же вкладке)
+    const interval = setInterval(updateLocationParams, 500);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('popstate', handlePopState);
+      clearInterval(interval);
+    };
+  }, []);
 
   const productQueries = useQueries({
     queries: uniqueProductIds.map((productId) => ({
-      queryKey: ["product", productId, lat, lon, address, city],
-      queryFn: () => fetchProduct({ product_id: productId, lat, lon, address, city }),
+      queryKey: ["product", productId, locationParams.lat, locationParams.lon, locationParams.address, locationParams.city],
+      queryFn: () => fetchProduct({ 
+        product_id: productId, 
+        lat: locationParams.lat, 
+        lon: locationParams.lon, 
+        address: locationParams.address, 
+        city: locationParams.city 
+      }),
       staleTime: 5 * 60 * 1000,
       enabled: !!productId,
     })),
