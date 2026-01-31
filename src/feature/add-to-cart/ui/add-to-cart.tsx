@@ -105,7 +105,6 @@ export const AddToCart = ({
   const loadProductDetails = React.useCallback(async () => {
     setIsLoadingProduct(true);
     try {
-      console.log('[DEBUG AddToCart] Загрузка товара с координатами:', { lat, lon, address: addressFromUrl, city: cityFromUrl });
       const product = await fetchProduct({ 
         product_id: productId,
         lat,
@@ -113,7 +112,6 @@ export const AddToCart = ({
         address: addressFromUrl,
         city: cityFromUrl,
       });
-      console.log('[DEBUG AddToCart] Получена цена товара:', product.price);
       setProductData({
         price: product.price,
         name: product.name,

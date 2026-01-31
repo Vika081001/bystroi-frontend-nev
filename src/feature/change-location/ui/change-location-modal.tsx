@@ -177,7 +177,6 @@ export const ChangeLocationModal = () => {
       
       if (cityMatch) {
         setSelected(cityMatch);
-        console.log('[DEBUG] Автоматически выбран город в селекте:', cityMatch.name);
       }
     }
   }, [detectedCity, cities, selected, searchParams]);
