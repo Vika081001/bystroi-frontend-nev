@@ -121,14 +121,48 @@ export const useCartItems = (goods: OrderGood[]) => {
     new Set(goods.map(item => item.nomenclature_id))
   );
   
-  // Получаем координаты и адрес из URL, если нет - из sessionStorage (автоматически определенный город)
+  // Приоритет: 1) параметры из URL, 2) вручную введенный адрес из localStorage, 3) автоматически определенный город
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   let lat = searchParams?.get('lat') ? Number(searchParams.get('lat')) : undefined;
   let lon = searchParams?.get('lon') ? Number(searchParams.get('lon')) : undefined;
-  const address = searchParams?.get('address') || undefined;
-  const city = searchParams?.get('city') || undefined;
+  let address = searchParams?.get('address') || undefined;
+  let city = searchParams?.get('city') || undefined;
   
-  // Если координат нет в URL, проверяем sessionStorage
+  // Если параметров нет в URL, проверяем вручную введенный адрес из localStorage
+  if ((!address && !city) || lat == null || lon == null) {
+    if (typeof window !== 'undefined') {
+      try {
+        const storageKey = 'bystroi_location';
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as { 
+            address?: string; 
+            city?: string; 
+            lat?: number; 
+            lon?: number;
+            manual?: boolean;
+          };
+          // Если адрес был введен вручную, используем его
+          if (parsed.manual && (parsed.address || parsed.city)) {
+            if (!address && !city) {
+              address = parsed.address;
+              city = parsed.city;
+            }
+            if (lat == null && parsed.lat != null) {
+              lat = parsed.lat;
+            }
+            if (lon == null && parsed.lon != null) {
+              lon = parsed.lon;
+            }
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
+  }
+  
+  // Если координат все еще нет, проверяем sessionStorage (автоматически определенный город)
   if ((lat == null || lon == null) && typeof window !== 'undefined') {
     try {
       const detected = sessionStorage.getItem('detected_city');
